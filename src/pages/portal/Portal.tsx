@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscriber } from '../../hooks/queries';
+import { useSubscriber, useTickets, useCreateTicket } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
+import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
 
 /**
  * Customer portal. For this first build the logged-in customer's subscriber
@@ -103,9 +105,78 @@ export default function Portal() {
                 <p className="mt-3 text-sm text-ink/40">No payments on record yet.</p>
               )}
             </div>
+
+            {/* Support tickets */}
+            <PortalSupport />
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function PortalSupport() {
+  const { data: tickets, isLoading } = useTickets();
+  const createTicket = useCreateTicket();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+
+  if (openId) {
+    return (
+      <div className="card p-4">
+        <TicketThread id={openId} onBack={() => setOpenId(null)} />
+      </div>
+    );
+  }
+
+  async function submit() {
+    if (!subject.trim() || !body.trim()) return;
+    await createTicket.mutateAsync({ subject: subject.trim(), body: body.trim() });
+    setSubject(''); setBody(''); setComposing(false);
+  }
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display font-600">Support</h2>
+        {!composing && (
+          <button className="text-sm font-600 text-signal-600" onClick={() => setComposing(true)}>
+            New request
+          </button>
+        )}
+      </div>
+
+      {composing ? (
+        <div className="mt-3 space-y-2">
+          <input className="input" placeholder="Subject (e.g. Slow connection)"
+            value={subject} onChange={(e) => setSubject(e.target.value)} />
+          <textarea className="input min-h-[80px]" placeholder="Describe the issue…"
+            value={body} onChange={(e) => setBody(e.target.value)} />
+          <div className="flex gap-2">
+            <button className="btn-ghost flex-1" onClick={() => setComposing(false)}>Cancel</button>
+            <button className="btn-primary flex-1" onClick={submit} disabled={createTicket.isPending}>
+              {createTicket.isPending ? 'Sending…' : 'Submit'}
+            </button>
+          </div>
+        </div>
+      ) : isLoading ? (
+        <p className="mt-3 text-sm text-ink/40">Loading…</p>
+      ) : tickets?.length ? (
+        <ul className="mt-3 divide-y divide-line">
+          {tickets.map((t) => (
+            <li key={t.id}>
+              <button onClick={() => setOpenId(t.id)} className="flex w-full items-center justify-between py-2.5 text-left">
+                <span className="truncate text-sm font-600">{t.subject}</span>
+                <span className={`pill shrink-0 ${ticketStatusStyle[t.status]}`}>{ticketStatusLabel[t.status]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm text-ink/40">No support requests yet. Tap "New request" if you need help.</p>
+      )}
     </div>
   );
 }

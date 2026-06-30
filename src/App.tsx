@@ -8,13 +8,22 @@ import Subscribers from './pages/owner/Subscribers';
 import SubscriberDetail from './pages/owner/SubscriberDetail';
 import Billing from './pages/owner/Billing';
 import Plans from './pages/owner/Plans';
+import Staff from './pages/owner/Staff';
+import Tickets from './pages/owner/Tickets';
+import Collector from './pages/collector/Collector';
 import Portal from './pages/portal/Portal';
+
+function landingFor(role: string) {
+  if (role === 'OWNER' || role === 'ADMIN') return '/owner';
+  if (role === 'COLLECTOR') return '/collector';
+  return '/portal';
+}
 
 function Protected({ roles, children }: { roles: string[]; children: ReactNode }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (!roles.includes(user.role)) {
-    return <Navigate to={user.role === 'COLLECTOR' ? '/portal' : '/owner'} replace />;
+    return <Navigate to={landingFor(user.role)} replace />;
   }
   return <>{children}</>;
 }
@@ -22,7 +31,7 @@ function Protected({ roles, children }: { roles: string[]; children: ReactNode }
 function Home() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'OWNER' || user.role === 'ADMIN' ? '/owner' : '/portal'} replace />;
+  return <Navigate to={landingFor(user.role)} replace />;
 }
 
 export default function App() {
@@ -38,7 +47,11 @@ export default function App() {
           <Route path="subscribers/:id" element={<SubscriberDetail />} />
           <Route path="billing" element={<Billing />} />
           <Route path="plans" element={<Plans />} />
+          <Route path="tickets" element={<Tickets />} />
+          <Route path="staff" element={<Staff />} />
         </Route>
+
+        <Route path="/collector" element={<Protected roles={['COLLECTOR']}><Collector /></Protected>} />
 
         <Route path="/portal" element={<Protected roles={['COLLECTOR', 'OWNER', 'ADMIN']}><Portal /></Protected>} />
 

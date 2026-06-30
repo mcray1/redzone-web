@@ -56,3 +56,51 @@ export interface Payment {
 
 export const peso = (cents: number) =>
   '₱' + (cents / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+export type StaffRole = 'ADMIN' | 'COLLECTOR';
+
+export interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  active: boolean;
+  createdAt: string;
+}
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface TicketMessage {
+  id: string;
+  authorName: string;
+  body: string;
+  isStaff: boolean;
+  createdAt: string;
+}
+
+export interface Ticket {
+  id: string;
+  subject: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  subscriber?: { fullName: string; accountNo: string } | null;
+  messages: TicketMessage[];
+  _count?: { messages: number };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CollectorToday {
+  count: number;
+  totalCents: number;
+  byMethod: Record<string, number>;
+  payments: Array<{
+    id: string;
+    amountCents: number;
+    method: string;
+    receiptNo: string;
+    createdAt: string;
+    subscriber: { fullName: string; accountNo: string };
+  }>;
+}

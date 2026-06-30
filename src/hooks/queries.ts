@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -114,5 +114,92 @@ export function useDeletePlan() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['plans'] }),
+  });
+}
+
+// --- Staff / users ---
+
+export function useStaff() {
+  return useQuery({
+    queryKey: ['staff'],
+    queryFn: async () => (await api.get<StaffUser[]>('/users')).data,
+  });
+}
+
+export function useCreateStaff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { name: string; email: string; password: string; role: string }) =>
+      (await api.post('/users', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  });
+}
+
+export function useSetStaffActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; active: boolean }) =>
+      (await api.patch(`/users/${p.id}/active`, { active: p.active })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  });
+}
+
+// --- Collector ---
+export function useCollectorToday() {
+  return useQuery({
+    queryKey: ['collector-today'],
+    queryFn: async () => (await api.get<CollectorToday>('/collector/today')).data,
+  });
+}
+
+// --- Tickets ---
+export function useTickets(status?: string) {
+  return useQuery({
+    queryKey: ['tickets', status],
+    queryFn: async () =>
+      (await api.get<Ticket[]>('/tickets', { params: status ? { status } : {} })).data,
+  });
+}
+
+export function useTicket(id: string | undefined) {
+  return useQuery({
+    queryKey: ['ticket', id],
+    enabled: !!id,
+    queryFn: async () => (await api.get<Ticket>(`/tickets/${id}`)).data,
+  });
+}
+
+export function useCreateTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subject: string; body: string; priority?: string }) =>
+      (await api.post('/tickets', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
+  });
+}
+
+export function useReplyTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; body: string }) =>
+      (await api.post(`/tickets/${p.id}/reply`, { body: p.body })).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['ticket', v.id] });
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
+  });
+}
+
+export function useUpdateTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; status?: string; priority?: string }) => {
+      const { id, ...body } = p;
+      return (await api.patch(`/tickets/${id}`, body)).data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['ticket', v.id] });
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
   });
 }
