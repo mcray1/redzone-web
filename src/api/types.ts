@@ -1,4 +1,4 @@
-export type Role = 'OWNER' | 'ADMIN' | 'COLLECTOR';
+export type Role = 'OWNER' | 'ADMIN' | 'COLLECTOR' | 'CUSTOMER';
 
 export interface User {
   id: string;
@@ -34,6 +34,7 @@ export interface Subscriber {
   balanceCents: number;
   dueDay: number;
   pppoeUsername?: string | null;
+  loginUser?: { id: string; email: string; active: boolean } | null;
   createdAt: string;
 }
 

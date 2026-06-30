@@ -1,22 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscriber, useTickets, useCreateTicket } from '../../hooks/queries';
+import { useMyAccount, useTickets, useCreateTicket } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
 
 /**
- * Customer portal. For this first build the logged-in customer's subscriber
- * record is resolved by the `branchId` field we stash as their subscriber id
- * at login time. When the backend gains a dedicated /me endpoint, swap the
- * lookup below for that.
+ * Customer portal. The logged-in customer's subscriber record comes from the
+ * /subscribers/me/account endpoint, resolved via the proper user→subscriber link.
  */
 export default function Portal() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  // Customer accounts carry their subscriber id in `branchId` for now.
-  const { data: s, isLoading } = useSubscriber(user?.branchId ?? undefined);
+  const { data: s, isLoading } = useMyAccount();
 
   return (
     <div className="min-h-full bg-paper pb-10">

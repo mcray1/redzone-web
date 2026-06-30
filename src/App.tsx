@@ -53,7 +53,7 @@ export default function App() {
 
         <Route path="/collector" element={<Protected roles={['COLLECTOR']}><Collector /></Protected>} />
 
-        <Route path="/portal" element={<Protected roles={['COLLECTOR', 'OWNER', 'ADMIN']}><Portal /></Protected>} />
+        <Route path="/portal" element={<Protected roles={['CUSTOMER', 'COLLECTOR', 'OWNER', 'ADMIN']}><Portal /></Protected>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -203,3 +203,28 @@ export function useUpdateTicket() {
     },
   });
 }
+
+// --- Customer's own account (replaces the branchId hack) ---
+export function useMyAccount() {
+  return useQuery({
+    queryKey: ['my-account'],
+    queryFn: async () => {
+      const { data } = await api.get<Subscriber & { payments: Payment[] }>('/subscribers/me/account');
+      return data;
+    },
+  });
+}
+
+// --- Customer login management (staff creates from subscriber detail) ---
+export function useCreateCustomerLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; email: string; password: string }) => {
+      const { data } = await api.post(`/subscribers/${p.subscriberId}/login`, {
+        email: p.email, password: p.password,
+      });
+      return data;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['subscriber', v.subscriberId] }),
+  });
+}

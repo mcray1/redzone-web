@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment } from '../../hooks/queries';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 
@@ -10,6 +10,7 @@ export default function SubscriberDetail() {
   const nav = useNavigate();
   const { data: s, isLoading } = useSubscriber(id);
   const [payOpen, setPayOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   if (isLoading || !s) return <Spinner />;
 
@@ -63,7 +64,98 @@ export default function SubscriberDetail() {
         )}
       </div>
 
+      {/* Customer portal login */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display font-600">Customer portal login</h2>
+            <p className="text-sm text-ink/50">
+              {s.loginUser
+                ? <>Active login: <span className="font-mono">{s.loginUser.email}</span></>
+                : 'No login yet. Create one so this customer can view their account online.'}
+            </p>
+          </div>
+        </div>
+        <button className="btn-ghost mt-3 w-full md:w-auto" onClick={() => setLoginOpen(true)}>
+          {s.loginUser ? 'Reset login' : 'Create login'}
+        </button>
+      </div>
+
       {payOpen && <PaymentModal subscriberId={s.id} balanceCents={s.balanceCents} onClose={() => setPayOpen(false)} />}
+      {loginOpen && (
+        <CustomerLoginModal
+          subscriberId={s.id}
+          existingEmail={s.loginUser?.email ?? null}
+          suggestedEmail={s.email ?? ''}
+          onClose={() => setLoginOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface LoginVals { email: string; password: string; }
+
+function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClose }:
+  { subscriberId: string; existingEmail: string | null; suggestedEmail: string; onClose: () => void }) {
+  const createLogin = useCreateCustomerLogin();
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<{ email: string; password: string } | null>(null);
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginVals>({
+    defaultValues: { email: existingEmail || suggestedEmail },
+  });
+
+  async function submit(v: LoginVals) {
+    setError(null);
+    try {
+      await createLogin.mutateAsync({ subscriberId, email: v.email, password: v.password });
+      setDone({ email: v.email, password: v.password });
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg || 'Could not create the login.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        {done ? (
+          <div className="text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-good/10 text-good">✓</div>
+            <h2 className="mt-3 font-display text-lg font-700">Login ready</h2>
+            <p className="mt-2 text-sm text-ink/60">Share these with the customer:</p>
+            <div className="mt-3 rounded-lg bg-paper p-3 text-left text-sm">
+              <p>Email: <span className="font-mono">{done.email}</span></p>
+              <p>Password: <span className="font-mono">{done.password}</span></p>
+            </div>
+            <p className="mt-2 text-xs text-ink/40">They sign in at portal.redzone.com.ph</p>
+            <button className="btn-dark mt-5 w-full" onClick={onClose}>Done</button>
+          </div>
+        ) : (
+          <>
+            <h2 className="font-display text-lg font-700">{existingEmail ? 'Reset login' : 'Create login'}</h2>
+            <form onSubmit={handleSubmit(submit)} className="mt-4 space-y-3">
+              <div>
+                <label className="label">Email (customer signs in with this)</label>
+                <input className="input" type="email" {...register('email', { required: true })} />
+                {errors.email && <p className="mt-1 text-xs text-bad">Required</p>}
+              </div>
+              <div>
+                <label className="label">Temporary password</label>
+                <input className="input" type="text" {...register('password', { required: true, minLength: 8 })} />
+                {errors.password && <p className="mt-1 text-xs text-bad">At least 8 characters</p>}
+              </div>
+              {error && <p className="text-sm text-bad">{error}</p>}
+              <div className="flex gap-2 pt-1">
+                <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
+                <button className="btn-primary flex-1" disabled={createLogin.isPending}>
+                  {createLogin.isPending ? 'Saving…' : existingEmail ? 'Reset' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
     </div>
   );
 }
