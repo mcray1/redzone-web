@@ -17,6 +17,7 @@ export interface ServicePlan {
   priceCents: number;
   downloadKbps: number;
   uploadKbps: number;
+  active?: boolean;
 }
 
 export interface Subscriber {

@@ -6,6 +6,7 @@ const nav = [
   { to: '/owner', label: 'Overview', end: true, icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
   { to: '/owner/subscribers', label: 'Subscribers', icon: 'M16 14a4 4 0 10-8 0M12 7a3 3 0 100 .01M2 21a8 8 0 0120 0' },
   { to: '/owner/billing', label: 'Billing', icon: 'M3 6h18v12H3zM3 10h18' },
+  { to: '/owner/plans', label: 'Plans', icon: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
 ];
 
 function Icon({ d }: { d: string }) {

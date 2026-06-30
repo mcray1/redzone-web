@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscribers, useCreateSubscriber } from '../../hooks/queries';
+import { useSubscribers, useCreateSubscriber, usePlans } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill, EmptyState } from '../../components/ui';
 
@@ -74,14 +74,20 @@ export default function Subscribers() {
 interface AddVals {
   accountNo: string; fullName: string; email?: string; phone?: string;
   address?: string; barangay?: string; municipality?: string; dueDay?: number;
+  servicePlanId?: string;
 }
 
 function AddSubscriberModal({ onClose }: { onClose: () => void }) {
   const create = useCreateSubscriber();
+  const { data: plans } = usePlans();
   const { register, handleSubmit, formState: { errors } } = useForm<AddVals>();
 
   async function submit(vals: AddVals) {
-    await create.mutateAsync({ ...vals, dueDay: vals.dueDay ? Number(vals.dueDay) : 1 });
+    await create.mutateAsync({
+      ...vals,
+      dueDay: vals.dueDay ? Number(vals.dueDay) : 1,
+      servicePlanId: vals.servicePlanId || undefined,
+    });
     onClose();
   }
 
@@ -125,6 +131,17 @@ function AddSubscriberModal({ onClose }: { onClose: () => void }) {
           <div className="col-span-1">
             <label className="label">Municipality</label>
             <input className="input" {...register('municipality')} />
+          </div>
+          <div className="col-span-2">
+            <label className="label">Service plan</label>
+            <select className="input" {...register('servicePlanId')}>
+              <option value="">— No plan yet —</option>
+              {plans?.filter((p) => p.active).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({peso(p.priceCents)}/mo)
+                </option>
+              ))}
+            </select>
           </div>
           <div className="col-span-2 mt-2 flex gap-2">
             <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>

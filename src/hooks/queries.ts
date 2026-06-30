@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -57,7 +57,6 @@ export function useRecordPayment() {
 }
 
 // Owner stats are derived client-side from the subscriber list for now.
-// Swap for a dedicated /stats endpoint when the backend grows one.
 export function useOwnerStats() {
   return useQuery({
     queryKey: ['owner-stats'],
@@ -75,5 +74,45 @@ export function useOwnerStats() {
         .reduce((sum, s) => sum + (s.servicePlan?.priceCents || 0), 0);
       return { total: data.total, active, suspended, pending, outstanding, monthlyRevenue, items };
     },
+  });
+}
+
+// --- Service plans ---
+
+export function usePlans() {
+  return useQuery({
+    queryKey: ['plans'],
+    queryFn: async () => {
+      const { data } = await api.get<ServicePlan[]>('/plans');
+      return data;
+    },
+  });
+}
+
+export function useSavePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (plan: Partial<ServicePlan> & { id?: string }) => {
+      if (plan.id) {
+        const body = { ...plan };
+        delete body.id;
+        const { data } = await api.put(`/plans/${plan.id}`, body);
+        return data;
+      }
+      const { data } = await api.post('/plans', plan);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plans'] }),
+  });
+}
+
+export function useDeletePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.delete(`/plans/${id}`);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plans'] }),
   });
 }

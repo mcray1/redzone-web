@@ -7,6 +7,7 @@ import Dashboard from './pages/owner/Dashboard';
 import Subscribers from './pages/owner/Subscribers';
 import SubscriberDetail from './pages/owner/SubscriberDetail';
 import Billing from './pages/owner/Billing';
+import Plans from './pages/owner/Plans';
 import Portal from './pages/portal/Portal';
 
 function Protected({ roles, children }: { roles: string[]; children: ReactNode }) {
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="subscribers" element={<Subscribers />} />
           <Route path="subscribers/:id" element={<SubscriberDetail />} />
           <Route path="billing" element={<Billing />} />
+          <Route path="plans" element={<Plans />} />
         </Route>
 
         <Route path="/portal" element={<Protected roles={['COLLECTOR', 'OWNER', 'ADMIN']}><Portal /></Protected>} />
