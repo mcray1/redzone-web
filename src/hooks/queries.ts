@@ -56,23 +56,47 @@ export function useRecordPayment() {
   });
 }
 
-// Owner stats are derived client-side from the subscriber list for now.
+// Owner stats now come from a server-side aggregated endpoint, so they are
+// accurate regardless of how many subscribers exist (no page-size cap).
+// Falls back to the old client-side derivation if the backend hasn't shipped
+// the /subscribers/stats endpoint yet, so the frontend can deploy on its own.
+interface OwnerStats {
+  total: number;
+  active: number;
+  suspended: number;
+  pending: number;
+  outstanding: number;
+  monthlyRevenue: number;
+  items: Subscriber[];
+}
+
 export function useOwnerStats() {
   return useQuery({
     queryKey: ['owner-stats'],
-    queryFn: async () => {
-      const { data } = await api.get<{ items: Subscriber[]; total: number }>('/subscribers', {
-        params: { take: 200 },
-      });
-      const items = data.items;
-      const active = items.filter((s) => s.status === 'ACTIVE').length;
-      const suspended = items.filter((s) => s.status === 'SUSPENDED').length;
-      const pending = items.filter((s) => s.status === 'PENDING_INSTALLATION').length;
-      const outstanding = items.reduce((sum, s) => sum + Math.max(0, s.balanceCents), 0);
-      const monthlyRevenue = items
-        .filter((s) => s.status === 'ACTIVE')
-        .reduce((sum, s) => sum + (s.servicePlan?.priceCents || 0), 0);
-      return { total: data.total, active, suspended, pending, outstanding, monthlyRevenue, items };
+    queryFn: async (): Promise<OwnerStats> => {
+      try {
+        const { data } = await api.get<OwnerStats>('/subscribers/stats');
+        return data;
+      } catch (err) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status !== 404) throw err;
+        // Older backend without /stats: derive from the (capped) list.
+        const { data } = await api.get<{ items: Subscriber[]; total: number }>('/subscribers', {
+          params: { take: 200 },
+        });
+        const items = data.items;
+        return {
+          total: data.total,
+          active: items.filter((s) => s.status === 'ACTIVE').length,
+          suspended: items.filter((s) => s.status === 'SUSPENDED').length,
+          pending: items.filter((s) => s.status === 'PENDING_INSTALLATION').length,
+          outstanding: items.reduce((sum, s) => sum + Math.max(0, s.balanceCents), 0),
+          monthlyRevenue: items
+            .filter((s) => s.status === 'ACTIVE')
+            .reduce((sum, s) => sum + (s.servicePlan?.priceCents || 0), 0),
+          items,
+        };
+      }
     },
   });
 }
