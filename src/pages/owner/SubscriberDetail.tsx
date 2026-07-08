@@ -39,6 +39,7 @@ export default function SubscriberDetail() {
           <Field label="Due day" value={`Day ${s.dueDay}`} />
           <Field label="Phone" value={s.phone ?? '—'} />
           <Field label="Email" value={s.email ?? '—'} />
+          <Field label="Sitio / Purok" value={s.sitio ?? '—'} />
           <Field label="Barangay" value={s.barangay ?? '—'} />
           <Field label="Municipality" value={s.municipality ?? '—'} />
         </div>
@@ -175,7 +176,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 }
 
 interface EditVals {
-  fullName: string; phone?: string; email?: string; address?: string;
+  fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
   municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number;
 }
 
@@ -189,6 +190,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       phone: sub.phone ?? '',
       email: sub.email ?? '',
       address: sub.address ?? '',
+      sitio: sub.sitio ?? '',
       municipality: sub.municipality ?? '',
       barangay: sub.barangay ?? '',
       servicePlanId: sub.servicePlan?.id ?? '',
@@ -208,6 +210,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           phone: v.phone,
           email: v.email,
           address: v.address,
+          sitio: v.sitio,
           municipality: v.municipality,
           barangay: v.barangay,
           servicePlanId: v.servicePlanId,
@@ -241,9 +244,13 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
             <label className="label">Email</label>
             <input className="input" type="email" {...register('email')} />
           </div>
-          <div className="col-span-2">
+          <div className="col-span-1">
             <label className="label">Address</label>
             <input className="input" {...register('address')} />
+          </div>
+          <div className="col-span-1">
+            <label className="label">Sitio / Purok</label>
+            <input className="input" {...register('sitio')} />
           </div>
           <div className="col-span-2">
             <LocationSelect

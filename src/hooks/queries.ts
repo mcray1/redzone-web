@@ -239,6 +239,7 @@ export function useStaffScope(userId: string | undefined) {
     queryFn: async () => {
       const { data } = await api.get<{
         municipalities: string[];
+        barangays: string[];
         subscribers: Array<{ id: string; fullName: string; accountNo: string; municipality: string | null }>;
       }>(`/users/${userId}/scope`);
       return data;
@@ -251,6 +252,19 @@ export function useSetStaffMunicipalities() {
   return useMutation({
     mutationFn: async (p: { id: string; municipalities: string[] }) =>
       (await api.patch(`/users/${p.id}/municipalities`, { municipalities: p.municipalities })).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['staff-scope', v.id] });
+      qc.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+}
+
+// Barangay coverage: each entry is "Municipality|Barangay".
+export function useSetStaffBarangays() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; barangays: string[] }) =>
+      (await api.patch(`/users/${p.id}/barangays`, { barangays: p.barangays })).data,
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['staff-scope', v.id] });
       qc.invalidateQueries({ queryKey: ['staff'] });

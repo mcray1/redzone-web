@@ -27,6 +27,7 @@ export interface Subscriber {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  sitio?: string | null;
   barangay?: string | null;
   municipality?: string | null;
   status: SubscriberStatus;

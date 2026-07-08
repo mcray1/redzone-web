@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useStaffScope, useSetStaffMunicipalities, useSetStaffAssignments, useSubscribers } from '../../hooks/queries';
-import { MUNICIPALITY_NAMES } from '../../lib/iloilo-locations';
+import { useStaffScope, useSetStaffMunicipalities, useSetStaffBarangays, useSetStaffAssignments, useSubscribers } from '../../hooks/queries';
+import { MUNICIPALITY_NAMES, barangaysFor } from '../../lib/iloilo-locations';
 import { Spinner } from '../../components/ui';
 
-// Editor for one staff member's coverage: municipalities + explicit subscribers.
+// Editor for one staff member's coverage: municipalities + barangays + explicit subscribers.
 export function StaffScopeEditor({ userId, onClose }: { userId: string; onClose: () => void }) {
   const { data: scope, isLoading } = useStaffScope(userId);
   const setMunis = useSetStaffMunicipalities();
+  const setBarangays = useSetStaffBarangays();
   const setAssigns = useSetStaffAssignments();
 
   const [munis, setMuniState] = useState<string[]>([]);
+  // Barangay coverage as "Municipality|Barangay" pairs.
+  const [brgys, setBrgyState] = useState<string[]>([]);
+  const [brgyMuni, setBrgyMuni] = useState('');
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
   // Local map of id -> display info, seeded from scope and grown as we add.
   const [subInfo, setSubInfo] = useState<Record<string, { fullName: string; accountNo: string }>>({});
@@ -19,6 +23,7 @@ export function StaffScopeEditor({ userId, onClose }: { userId: string; onClose:
   useEffect(() => {
     if (scope) {
       setMuniState(scope.municipalities);
+      setBrgyState(scope.barangays);
       setAssignedIds(scope.subscribers.map((s) => s.id));
       const info: Record<string, { fullName: string; accountNo: string }> = {};
       scope.subscribers.forEach((s) => { info[s.id] = { fullName: s.fullName, accountNo: s.accountNo }; });
@@ -31,6 +36,9 @@ export function StaffScopeEditor({ userId, onClose }: { userId: string; onClose:
   function toggleMuni(m: string) {
     setMuniState((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
   }
+  function toggleBrgy(pair: string) {
+    setBrgyState((prev) => prev.includes(pair) ? prev.filter((x) => x !== pair) : [...prev, pair]);
+  }
 
   const assignedSubs = assignedIds.map((id) => ({ id, ...(subInfo[id] || { fullName: id, accountNo: '' }) }));
   // Newly searched subs not already assigned
@@ -38,9 +46,12 @@ export function StaffScopeEditor({ userId, onClose }: { userId: string; onClose:
 
   async function save() {
     await setMunis.mutateAsync({ id: userId, municipalities: munis });
+    await setBarangays.mutateAsync({ id: userId, barangays: brgys });
     await setAssigns.mutateAsync({ id: userId, subscriberIds: assignedIds });
     onClose();
   }
+
+  const saving = setMunis.isPending || setBarangays.isPending || setAssigns.isPending;
 
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
@@ -60,6 +71,40 @@ export function StaffScopeEditor({ userId, onClose }: { userId: string; onClose:
             ))}
           </div>
           <p className="mt-1.5 text-xs text-ink/40">They can handle all subscribers in the selected municipalities.</p>
+        </div>
+
+        {/* Barangays (finer than a whole municipality) */}
+        <div className="mt-5">
+          <label className="label">Or specific barangays</label>
+          {brgys.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {brgys.map((pair) => (
+                <button key={pair} type="button" onClick={() => toggleBrgy(pair)}
+                  className="pill border border-ink bg-ink text-white">
+                  {pair.replace('|', ' · ')} ✕
+                </button>
+              ))}
+            </div>
+          )}
+          <select className="input" value={brgyMuni} onChange={(e) => setBrgyMuni(e.target.value)}>
+            <option value="">Pick a municipality to add its barangays…</option>
+            {MUNICIPALITY_NAMES.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          {brgyMuni && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {barangaysFor(brgyMuni).map((b) => {
+                const pair = `${brgyMuni}|${b}`;
+                const on = brgys.includes(pair);
+                return (
+                  <button key={pair} type="button" onClick={() => toggleBrgy(pair)}
+                    className={`pill border text-sm ${on ? 'border-ink bg-ink text-white' : 'border-line text-ink/60'}`}>
+                    {b}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="mt-1.5 text-xs text-ink/40">Use this to split a town — e.g. one collector for just some barangays.</p>
         </div>
 
         {/* Explicit subscriber assignments */}
@@ -100,8 +145,8 @@ export function StaffScopeEditor({ userId, onClose }: { userId: string; onClose:
 
         <div className="mt-6 flex gap-2">
           <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
-          <button className="btn-primary flex-1" onClick={save} disabled={setMunis.isPending || setAssigns.isPending}>
-            {setMunis.isPending || setAssigns.isPending ? 'Saving…' : 'Save coverage'}
+          <button className="btn-primary flex-1" onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : 'Save coverage'}
           </button>
         </div>
       </div>

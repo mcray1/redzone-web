@@ -74,7 +74,7 @@ export default function Subscribers() {
 
 interface AddVals {
   accountNo: string; fullName: string; email?: string; phone?: string;
-  address?: string; barangay?: string; municipality?: string; dueDay?: number;
+  address?: string; sitio?: string; barangay?: string; municipality?: string; dueDay?: number;
   servicePlanId?: string;
 }
 
@@ -124,9 +124,13 @@ function AddSubscriberModal({ onClose }: { onClose: () => void }) {
             <label className="label">Email</label>
             <input className="input" type="email" {...register('email')} />
           </div>
-          <div className="col-span-2">
+          <div className="col-span-1">
             <label className="label">Address</label>
             <input className="input" {...register('address')} />
+          </div>
+          <div className="col-span-1">
+            <label className="label">Sitio / Purok</label>
+            <input className="input" {...register('sitio')} />
           </div>
           <div className="col-span-2">
             <input type="hidden" {...register('municipality')} />
