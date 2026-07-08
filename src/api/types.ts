@@ -58,6 +58,18 @@ export interface Payment {
   voidReason?: string | null;
 }
 
+export interface Expense {
+  id: string;
+  date: string;
+  category: string;
+  description: string;
+  amountCents: number;
+  method?: string | null;
+  vendor?: string | null;
+  reference?: string | null;
+  createdAt: string;
+}
+
 export const peso = (cents: number) =>
   '₱' + (cents / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 });
 

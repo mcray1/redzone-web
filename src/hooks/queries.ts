@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -666,4 +666,53 @@ export interface SubscriberReportRow {
 export async function fetchSubscriberReport(): Promise<SubscriberReportRow[]> {
   const { data } = await api.get<{ rows: SubscriberReportRow[] }>('/reports/subscribers');
   return data.rows;
+}
+
+// --- Expenses (owner/admin) ---
+export interface ExpensesResult {
+  rows: Expense[]; totalCents: number; byCategory: Record<string, number>; count: number;
+}
+export function useExpenses(params: { from?: string; to?: string; category?: string }) {
+  return useQuery({
+    queryKey: ['expenses', params],
+    queryFn: async () => (await api.get<ExpensesResult>('/expenses', { params })).data,
+  });
+}
+
+export interface Pnl {
+  incomeCents: number; expenseCents: number; netCents: number; byCategory: Record<string, number>;
+}
+export function usePnl(from: string, to: string) {
+  return useQuery({
+    queryKey: ['pnl', from, to],
+    queryFn: async () => (await api.get<Pnl>('/expenses/pnl', { params: { from, to } })).data,
+  });
+}
+
+export function useSaveExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      id?: string; date: string; category: string; description: string;
+      amountCents: number; method?: string; vendor?: string; reference?: string;
+    }) => {
+      const { id, ...body } = p;
+      return id ? (await api.patch(`/expenses/${id}`, body)).data : (await api.post('/expenses', body)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['pnl'] });
+    },
+  });
+}
+
+export function useVoidExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/expenses/${id}/void`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['pnl'] });
+    },
+  });
 }
