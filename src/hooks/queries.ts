@@ -376,3 +376,32 @@ export function useAttendance(params?: { date?: string; technicianId?: string })
     },
   });
 }
+
+export interface BillingRunResult {
+  period: string;      // "YYYY-MM"
+  eligible: number;    // active subscribers with a plan
+  created: number;     // invoices created (or that would be, in a preview)
+  skipped: number;     // already billed this month, or no plan price
+  totalCents: number;  // total added to balances
+  dryRun?: boolean;
+  overdueMarked?: number;
+}
+
+// Preview this month's billing without writing anything (owner/admin).
+export function useBillingPreview() {
+  return useMutation({
+    mutationFn: async () => (await api.get<BillingRunResult>('/billing/preview')).data,
+  });
+}
+
+// Actually generate this month's invoices and flag overdue ones (owner only).
+export function useRunBilling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await api.post<BillingRunResult>('/billing/run')).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+      qc.invalidateQueries({ queryKey: ['subscribers'] });
+    },
+  });
+}
