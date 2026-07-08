@@ -1,4 +1,4 @@
-export type Role = 'OWNER' | 'ADMIN' | 'COLLECTOR' | 'CUSTOMER';
+export type Role = 'OWNER' | 'ADMIN' | 'COLLECTOR' | 'TECHNICIAN' | 'CUSTOMER';
 
 export interface User {
   id: string;
