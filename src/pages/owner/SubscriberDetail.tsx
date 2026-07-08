@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans } from '../../hooks/queries';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment } from '../../hooks/queries';
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 import { LocationSelect } from '../../components/LocationSelect';
@@ -57,14 +57,18 @@ export default function SubscriberDetail() {
         {s.payments?.length ? (
           <ul className="mt-3 divide-y divide-line">
             {s.payments.map((p) => (
-              <li key={p.id} className="flex items-center justify-between py-2.5 text-sm">
-                <div>
-                  <p className="font-600">{peso(p.amountCents)}</p>
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className={p.voided ? 'opacity-50' : ''}>
+                  <p className={`font-600 ${p.voided ? 'line-through' : ''}`}>{peso(p.amountCents)}</p>
                   <p className="text-xs text-ink/50">
                     {p.method} · {new Date(p.createdAt).toLocaleDateString('en-PH')}
+                    {p.voided && <span className="ml-1 text-bad">· voided</span>}
                   </p>
                 </div>
-                <span className="text-xs font-mono text-ink/40">{p.receiptNo}</span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-mono text-xs text-ink/40">{p.receiptNo}</span>
+                  {!p.voided && <VoidButton paymentId={p.id} subscriberId={s.id} />}
+                </div>
               </li>
             ))}
           </ul>
@@ -272,6 +276,24 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
         </form>
       </div>
     </div>
+  );
+}
+
+function VoidButton({ paymentId, subscriberId }: { paymentId: string; subscriberId: string }) {
+  const voidPay = useVoidPayment();
+  return (
+    <button
+      className="text-xs font-600 text-bad"
+      disabled={voidPay.isPending}
+      onClick={() => {
+        const reason = window.prompt('Void this payment? Enter a reason (the amount goes back onto the balance):');
+        if (reason && reason.trim()) {
+          voidPay.mutate({ id: paymentId, reason: reason.trim(), subscriberId });
+        }
+      }}
+    >
+      Void
+    </button>
   );
 }
 

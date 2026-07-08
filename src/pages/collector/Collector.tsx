@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberStatus } from '../../hooks/queries';
+import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberStatus, useRemittancePending, useSubmitRemittance, useMyRemittances } from '../../hooks/queries';
 import { peso, type Subscriber } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
@@ -197,6 +197,8 @@ function TodayTab() {
         <p className="mt-1 text-sm text-ink/50">{data.count} payment{data.count === 1 ? '' : 's'}</p>
       </div>
 
+      <RemittancePanel />
+
       {Object.keys(data.byMethod).length > 0 && (
         <div className="card p-5">
           <h3 className="font-display font-600">By method</h3>
@@ -227,6 +229,65 @@ function TodayTab() {
           </ul>
         ) : <p className="mt-2 text-sm text-ink/40">No payments yet today.</p>}
       </div>
+    </div>
+  );
+}
+
+function RemittancePanel() {
+  const { data: pending } = useRemittancePending();
+  const { data: mine } = useMyRemittances();
+  const submit = useSubmitRemittance();
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const expected = pending?.expectedCents ?? 0;
+
+  async function turnIn() {
+    setErr(null); setMsg(null);
+    const cents = Math.round(Number(amount || 0) * 100);
+    try {
+      await submit.mutateAsync({ submittedCents: cents, note: note || undefined });
+      setMsg('Remittance submitted for verification.');
+      setAmount(''); setNote('');
+    } catch (e: unknown) {
+      const m = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErr(m || 'Could not submit.');
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <h3 className="font-display font-600">Cash to remit</h3>
+      <p className="mt-1 text-2xl font-700">{peso(expected)}</p>
+      <p className="text-xs text-ink/50">{pending?.count ?? 0} unremitted cash payment{(pending?.count ?? 0) === 1 ? '' : 's'}</p>
+
+      {expected > 0 && (
+        <div className="mt-3 space-y-2">
+          <input className="input" type="number" step="0.01" min="0" placeholder="Amount you're turning in (₱)"
+            value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <input className="input" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+          {err && <p className="text-sm text-bad">{err}</p>}
+          {msg && <p className="text-sm text-good">{msg}</p>}
+          <button className="btn-primary w-full" disabled={submit.isPending} onClick={turnIn}>
+            {submit.isPending ? 'Submitting…' : 'Submit remittance'}
+          </button>
+        </div>
+      )}
+
+      {mine && mine.length > 0 && (
+        <ul className="mt-4 divide-y divide-line">
+          {mine.slice(0, 5).map((r) => (
+            <li key={r.id} className="flex items-center justify-between py-2 text-sm">
+              <span>{peso(r.submittedCents)} <span className="text-ink/40">of {peso(r.expectedCents)}</span></span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-600 ${r.status === 'VERIFIED' ? 'bg-good/10 text-good' : 'bg-signal/15 text-warn'}`}>
+                {r.status.toLowerCase()}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

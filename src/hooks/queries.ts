@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -511,5 +511,105 @@ export function useDecideAdvance() {
       qc.invalidateQueries({ queryKey: ['salary-advances'] });
       qc.invalidateQueries({ queryKey: ['salary-staff'] });
     },
+  });
+}
+
+// --- Payroll runs (admin, PIN-gated) ---
+export function usePayrollRuns(pin: string | null) {
+  return useQuery({
+    queryKey: ['payroll-runs', pin],
+    enabled: !!pin,
+    retry: false,
+    queryFn: async () => (await api.get<PayrollRun[]>('/salary/payroll/runs', pinHeader(pin as string))).data,
+  });
+}
+
+export function usePayrollRun(pin: string | null, id: string | null) {
+  return useQuery({
+    queryKey: ['payroll-run', id, pin],
+    enabled: !!pin && !!id,
+    retry: false,
+    queryFn: async () => (await api.get<PayrollRunDetail>(`/salary/payroll/runs/${id}`, pinHeader(pin as string))).data,
+  });
+}
+
+export function useCreatePayrollRun(pin: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (period: string) => (await api.post('/salary/payroll/runs', { period }, pinHeader(pin as string))).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
+  });
+}
+
+export function useUpdatePayslip(pin: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; daysWorked: number }) =>
+      (await api.patch(`/salary/payroll/payslips/${p.id}`, { daysWorked: p.daysWorked }, pinHeader(pin as string))).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-run'] }),
+  });
+}
+
+export function useFinalizePayroll(pin: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/salary/payroll/runs/${id}/finalize`, {}, pinHeader(pin as string))).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payroll-runs'] });
+      qc.invalidateQueries({ queryKey: ['payroll-run'] });
+      qc.invalidateQueries({ queryKey: ['salary-staff'] });
+    },
+  });
+}
+
+// --- Payment void ---
+export function useVoidPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; reason: string; subscriberId: string }) =>
+      (await api.post(`/billing/payments/${p.id}/void`, { reason: p.reason })).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['subscriber', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+    },
+  });
+}
+
+// --- Remittance (collector) ---
+export function useRemittancePending() {
+  return useQuery({
+    queryKey: ['remittance-pending'],
+    queryFn: async () => (await api.get<{ expectedCents: number; count: number }>('/remittance/pending')).data,
+  });
+}
+export function useMyRemittances() {
+  return useQuery({
+    queryKey: ['remittance-mine'],
+    queryFn: async () => (await api.get<Remittance[]>('/remittance/mine')).data,
+  });
+}
+export function useSubmitRemittance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { submittedCents: number; note?: string }) => (await api.post('/remittance', p)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['remittance-pending'] });
+      qc.invalidateQueries({ queryKey: ['remittance-mine'] });
+    },
+  });
+}
+
+// --- Remittance (admin) ---
+export function useRemittances(status?: string) {
+  return useQuery({
+    queryKey: ['remittances', status],
+    queryFn: async () => (await api.get<Remittance[]>('/remittance', { params: status ? { status } : {} })).data,
+  });
+}
+export function useVerifyRemittance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/remittance/${id}/verify`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['remittances'] }),
   });
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOwnerStats, useBillingPreview, useRunBilling } from '../../hooks/queries';
+import { useOwnerStats, useBillingPreview, useRunBilling, useRemittances, useVerifyRemittance } from '../../hooks/queries';
 import type { BillingRunResult } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
@@ -34,6 +34,8 @@ export default function Billing() {
 
       {user?.role === 'OWNER' && <RunBillingPanel />}
 
+      <RemittancesPanel />
+
       {owing.length === 0 ? (
         <EmptyState title="Everyone's paid up" hint="No outstanding balances right now." />
       ) : (
@@ -53,6 +55,42 @@ export default function Billing() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Collector cash remittances awaiting verification. */
+function RemittancesPanel() {
+  const { data, isLoading } = useRemittances('PENDING');
+  const verify = useVerifyRemittance();
+  if (isLoading) return null;
+  if (!data || data.length === 0) return null;
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Collector remittances to verify</h2>
+      <ul className="mt-3 divide-y divide-line">
+        {data.map((r) => {
+          const variance = r.varianceCents ?? 0;
+          return (
+            <li key={r.id} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="truncate font-600">{r.collectorName} — {peso(r.submittedCents)}</p>
+                <p className="text-xs text-ink/50">
+                  expected {peso(r.expectedCents)}
+                  {variance !== 0 && (
+                    <span className={variance < 0 ? 'text-bad' : 'text-good'}>
+                      {' '}· {variance < 0 ? 'short' : 'over'} {peso(Math.abs(variance))}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button className="btn-primary shrink-0" disabled={verify.isPending}
+                onClick={() => verify.mutate(r.id)}>Verify</button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

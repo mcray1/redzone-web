@@ -53,6 +53,8 @@ export interface Payment {
   method: string;
   receiptNo: string;
   createdAt: string;
+  voided?: boolean;
+  voidReason?: string | null;
 }
 
 export const peso = (cents: number) =>
@@ -168,4 +170,47 @@ export interface StaffSalaryRow {
   role: Role;
   salary: StaffSalary | null;
   approvedAdvanceTotal: number;
+}
+
+// --- Remittance ---
+export type RemittanceStatus = 'PENDING' | 'VERIFIED';
+export interface Remittance {
+  id: string;
+  collectorId: string;
+  expectedCents: number;
+  submittedCents: number;
+  status: RemittanceStatus;
+  note?: string | null;
+  createdAt: string;
+  collectorName?: string;
+  varianceCents?: number;
+}
+
+// --- Payroll runs ---
+export type PayrollStatus = 'DRAFT' | 'FINALIZED';
+export interface PayrollRun {
+  id: string;
+  period: string;
+  status: PayrollStatus;
+  createdAt: string;
+  finalizedAt?: string | null;
+  _count?: { payslips: number };
+}
+export interface Payslip {
+  id: string;
+  userId: string;
+  type: SalaryType;
+  baseCents: number;
+  allowanceCents: number;
+  dailyRateCents: number;
+  daysWorked: number;
+  grossCents: number;
+  advanceDeductedCents: number;
+  netCents: number;
+  staffName?: string;
+  staffRole?: Role | null;
+}
+export interface PayrollRunDetail extends PayrollRun {
+  payslips: Payslip[];
+  totals: { gross: number; advance: number; net: number };
 }
