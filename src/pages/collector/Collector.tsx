@@ -5,10 +5,11 @@ import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberSt
 import { peso, type Subscriber } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+import { MySalarySection } from '../../components/MySalarySection';
 
 export default function Collector() {
   const { user, logout } = useAuth();
-  const [tab, setTab] = useState<'collect' | 'today'>('collect');
+  const [tab, setTab] = useState<'collect' | 'today' | 'salary'>('collect');
   const [pwOpen, setPwOpen] = useState(false);
 
   return (
@@ -27,7 +28,7 @@ export default function Collector() {
       </header>
 
       <main className="mx-auto max-w-md px-4 py-5">
-        {tab === 'collect' ? <CollectTab /> : <TodayTab />}
+        {tab === 'collect' ? <CollectTab /> : tab === 'today' ? <TodayTab /> : <MySalarySection />}
       </main>
 
       {/* Bottom nav */}
@@ -41,6 +42,11 @@ export default function Collector() {
           className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-600 ${tab === 'today' ? 'text-signal-600' : 'text-ink/50'}`}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5"><path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round"/></svg>
           Today
+        </button>
+        <button onClick={() => setTab('salary')}
+          className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-600 ${tab === 'salary' ? 'text-signal-600' : 'text-ink/50'}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Salary
         </button>
       </nav>
     </div>

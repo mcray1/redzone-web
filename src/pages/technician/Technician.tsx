@@ -6,6 +6,7 @@ import type { Job, JobStatus } from '../../api/types';
 import { Logo, Spinner, SignalMark } from '../../components/ui';
 import { AttendanceCard } from '../../components/AttendanceCard';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+import { MySalarySection } from '../../components/MySalarySection';
 
 const STATUS_STYLE: Record<JobStatus, string> = {
   SCHEDULED: 'bg-signal/15 text-warn',
@@ -21,6 +22,7 @@ export default function Technician() {
   const { user, logout } = useAuth();
   const [openJob, setOpenJob] = useState<Job | null>(null);
   const [pwOpen, setPwOpen] = useState(false);
+  const [showSalary, setShowSalary] = useState(false);
   const { data: jobs, isLoading } = useJobs();
 
   const active = (jobs ?? []).filter((j) => j.status === 'SCHEDULED' || j.status === 'IN_PROGRESS');
@@ -45,6 +47,14 @@ export default function Technician() {
 
       <main className="mx-auto max-w-md px-4 py-5 space-y-5">
         <AttendanceCard />
+
+        <section>
+          <button className="btn-ghost w-full justify-between" onClick={() => setShowSalary((v) => !v)}>
+            <span className="font-600">Salary &amp; advances</span>
+            <span className="text-ink/40">{showSalary ? '▲' : '▼'}</span>
+          </button>
+          {showSalary && <div className="mt-3"><MySalarySection /></div>}
+        </section>
 
         <section>
           <h2 className="mb-2 font-display font-600">My jobs</h2>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -426,5 +426,90 @@ export function useChangePassword() {
   return useMutation({
     mutationFn: async (p: { currentPassword: string; newPassword: string }) =>
       (await api.post('/auth/change-password', p)).data,
+  });
+}
+
+// --- Payroll / salary ---
+const pinHeader = (pin: string) => ({ headers: { 'x-salary-pin': pin } });
+
+// Does the current user have a salary PIN set yet?
+export function useSalaryStatus() {
+  return useQuery({
+    queryKey: ['salary-status'],
+    queryFn: async () => (await api.get<{ hasPin: boolean }>('/salary/status')).data,
+  });
+}
+
+export function useSetSalaryPin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { pin: string; currentPin?: string }) => (await api.post('/salary/pin', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['salary-status'] }),
+  });
+}
+
+// Staff: my own salary + advances (needs the unlocked PIN).
+export function useMySalary(pin: string | null) {
+  return useQuery({
+    queryKey: ['salary-me', pin],
+    enabled: !!pin,
+    retry: false,
+    queryFn: async () =>
+      (await api.get<{ salary: StaffSalary | null; advances: SalaryAdvance[]; approvedTotal: number }>(
+        '/salary/me', pinHeader(pin as string))).data,
+  });
+}
+
+export function useRequestAdvance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { amountCents: number; reason?: string }) => (await api.post('/salary/advances', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['salary-me'] }),
+  });
+}
+
+// Admin: all staff salaries (needs the unlocked PIN).
+export function useStaffSalaries(pin: string | null) {
+  return useQuery({
+    queryKey: ['salary-staff', pin],
+    enabled: !!pin,
+    retry: false,
+    queryFn: async () => (await api.get<StaffSalaryRow[]>('/salary/staff', pinHeader(pin as string))).data,
+  });
+}
+
+export function useSetStaffSalary(pin: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { userId: string; type: string; baseCents: number; allowanceCents: number; notes?: string }) => {
+      const { userId, ...body } = p;
+      return (await api.put(`/salary/staff/${userId}`, body, pinHeader(pin as string))).data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['salary-staff'] }),
+  });
+}
+
+// Admin: advance requests queue (needs the unlocked PIN).
+export function useAdvancesQueue(pin: string | null, status?: string) {
+  return useQuery({
+    queryKey: ['salary-advances', status, pin],
+    enabled: !!pin,
+    retry: false,
+    queryFn: async () =>
+      (await api.get<SalaryAdvance[]>('/salary/advances', { ...pinHeader(pin as string), params: status ? { status } : {} })).data,
+  });
+}
+
+export function useDecideAdvance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; status: 'APPROVED' | 'REJECTED'; note?: string }) => {
+      const { id, ...body } = p;
+      return (await api.post(`/salary/advances/${id}/decision`, body)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['salary-advances'] });
+      qc.invalidateQueries({ queryKey: ['salary-staff'] });
+    },
   });
 }

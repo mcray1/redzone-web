@@ -134,3 +134,38 @@ export interface Job {
     gpsLng?: number | null;
   };
 }
+
+// --- Payroll / salary ---
+export type SalaryType = 'MONTHLY' | 'DAILY';
+export type AdvanceStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface StaffSalary {
+  id: string;
+  userId: string;
+  type: SalaryType;
+  baseCents: number;       // monthly base, or the daily rate when type = DAILY
+  allowanceCents: number;  // monthly allowance
+  notes?: string | null;
+  updatedAt: string;
+}
+
+export interface SalaryAdvance {
+  id: string;
+  userId: string;
+  amountCents: number;
+  reason?: string | null;
+  status: AdvanceStatus;
+  decisionNote?: string | null;
+  decidedAt?: string | null;
+  createdAt: string;
+  user?: { id: string; name: string; role: Role };
+}
+
+export interface StaffSalaryRow {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  salary: StaffSalary | null;
+  approvedAdvanceTotal: number;
+}
