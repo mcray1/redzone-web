@@ -66,6 +66,7 @@ export interface StaffUser {
   email: string;
   role: Role;
   active: boolean;
+  municipalities?: string[];
   createdAt: string;
 }
 
@@ -104,4 +105,32 @@ export interface CollectorToday {
     createdAt: string;
     subscriber: { fullName: string; accountNo: string };
   }>;
+}
+
+export type JobType = 'INSTALLATION' | 'REPAIR';
+export type JobStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface Job {
+  id: string;
+  type: JobType;
+  status: JobStatus;
+  subscriberId: string;
+  technicianId?: string | null;
+  scheduledAt?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+  equipmentUsed?: string | null;
+  cpeModel?: string | null;
+  serialNo?: string | null;
+  routerMac?: string | null;
+  subscriber: {
+    id: string;
+    fullName: string;
+    accountNo: string;
+    address?: string | null;
+    barangay?: string | null;
+    municipality?: string | null;
+    gpsLat?: number | null;
+    gpsLng?: number | null;
+  };
 }

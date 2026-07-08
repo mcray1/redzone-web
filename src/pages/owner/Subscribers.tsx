@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useSubscribers, useCreateSubscriber, usePlans } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill, EmptyState } from '../../components/ui';
+import { LocationSelect } from '../../components/LocationSelect';
 
 const FILTERS: Array<{ key: string; label: string }> = [
   { key: '', label: 'All' },
@@ -80,7 +81,10 @@ interface AddVals {
 function AddSubscriberModal({ onClose }: { onClose: () => void }) {
   const create = useCreateSubscriber();
   const { data: plans } = usePlans();
-  const { register, handleSubmit, formState: { errors } } = useForm<AddVals>();
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<AddVals>();
+
+  const municipality = watch('municipality') || '';
+  const barangay = watch('barangay') || '';
 
   async function submit(vals: AddVals) {
     await create.mutateAsync({
@@ -124,13 +128,15 @@ function AddSubscriberModal({ onClose }: { onClose: () => void }) {
             <label className="label">Address</label>
             <input className="input" {...register('address')} />
           </div>
-          <div className="col-span-1">
-            <label className="label">Barangay</label>
-            <input className="input" {...register('barangay')} />
-          </div>
-          <div className="col-span-1">
-            <label className="label">Municipality</label>
-            <input className="input" {...register('municipality')} />
+          <div className="col-span-2">
+            <input type="hidden" {...register('municipality')} />
+            <input type="hidden" {...register('barangay')} />
+            <LocationSelect
+              municipality={municipality}
+              barangay={barangay}
+              onMunicipality={(v) => setValue('municipality', v)}
+              onBarangay={(v) => setValue('barangay', v)}
+            />
           </div>
           <div className="col-span-2">
             <label className="label">Service plan</label>

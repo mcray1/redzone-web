@@ -18,7 +18,8 @@ export default function Login() {
       const user = await login(vals.email, vals.password);
       const dest = user.role === 'OWNER' || user.role === 'ADMIN'
         ? '/owner'
-        : user.role === 'COLLECTOR' ? '/collector' : '/portal';
+        : user.role === 'COLLECTOR' ? '/collector'
+        : user.role === 'TECHNICIAN' ? '/technician' : '/portal';
       nav(dest, { replace: true });
     } catch {
       setError('Wrong email or password. Try again.');

@@ -8,9 +8,7 @@ export default function Billing() {
   const nav = useNavigate();
   if (isLoading || !data) return <Spinner />;
 
-  const owing = data.items
-    .filter((s) => s.balanceCents > 0)
-    .sort((a, b) => b.balanceCents - a.balanceCents);
+  const owing = data.owing;
 
   return (
     <div className="space-y-5">

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin } from '../../hooks/queries';
-import { peso } from '../../api/types';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus } from '../../hooks/queries';
+import { peso, type SubscriberStatus } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 
 export default function SubscriberDetail() {
@@ -38,7 +38,11 @@ export default function SubscriberDetail() {
           <Field label="Municipality" value={s.municipality ?? '—'} />
         </div>
 
-        <button className="btn-primary mt-5 w-full md:w-auto" onClick={() => setPayOpen(true)}>
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <StatusControl id={s.id} current={s.status} />
+        </div>
+
+        <button className="btn-primary mt-4 w-full md:w-auto" onClick={() => setPayOpen(true)}>
           Record payment
         </button>
       </div>
@@ -232,6 +236,40 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function StatusControl({ id, current }: { id: string; current: SubscriberStatus }) {
+  const setStatus = useSetSubscriberStatus();
+  const STATUSES: Array<{ value: SubscriberStatus; label: string }> = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'PENDING_INSTALLATION', label: 'Pending install' },
+    { value: 'SUSPENDED', label: 'Suspended' },
+    { value: 'DISCONNECTED', label: 'Disconnected' },
+    { value: 'ARCHIVED', label: 'Archived' },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {current === 'PENDING_INSTALLATION' && (
+        <button
+          className="btn-primary"
+          onClick={() => setStatus.mutate({ id, status: 'ACTIVE' })}
+          disabled={setStatus.isPending}>
+          {setStatus.isPending ? 'Activating…' : 'Mark as Active'}
+        </button>
+      )}
+      <label className="text-xs font-600 uppercase tracking-wide text-ink/40">Set status</label>
+      <select
+        className="input w-auto"
+        value={current}
+        onChange={(e) => setStatus.mutate({ id, status: e.target.value })}
+        disabled={setStatus.isPending}>
+        {STATUSES.map((st) => (
+          <option key={st.value} value={st.value}>{st.label}</option>
+        ))}
+      </select>
     </div>
   );
 }

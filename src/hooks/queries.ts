@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -56,47 +56,24 @@ export function useRecordPayment() {
   });
 }
 
-// Owner stats now come from a server-side aggregated endpoint, so they are
-// accurate regardless of how many subscribers exist (no page-size cap).
-// Falls back to the old client-side derivation if the backend hasn't shipped
-// the /subscribers/stats endpoint yet, so the frontend can deploy on its own.
-interface OwnerStats {
-  total: number;
-  active: number;
-  suspended: number;
-  pending: number;
-  outstanding: number;
-  monthlyRevenue: number;
-  items: Subscriber[];
-}
-
+// Owner stats are derived client-side from the subscriber list for now.
+// Dashboard/billing stats — computed in the database via /stats/overview.
+// Returns aggregates plus small pre-sorted lists, so no page pulls every subscriber.
 export function useOwnerStats() {
   return useQuery({
     queryKey: ['owner-stats'],
-    queryFn: async (): Promise<OwnerStats> => {
-      try {
-        const { data } = await api.get<OwnerStats>('/subscribers/stats');
-        return data;
-      } catch (err) {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status !== 404) throw err;
-        // Older backend without /stats: derive from the (capped) list.
-        const { data } = await api.get<{ items: Subscriber[]; total: number }>('/subscribers', {
-          params: { take: 200 },
-        });
-        const items = data.items;
-        return {
-          total: data.total,
-          active: items.filter((s) => s.status === 'ACTIVE').length,
-          suspended: items.filter((s) => s.status === 'SUSPENDED').length,
-          pending: items.filter((s) => s.status === 'PENDING_INSTALLATION').length,
-          outstanding: items.reduce((sum, s) => sum + Math.max(0, s.balanceCents), 0),
-          monthlyRevenue: items
-            .filter((s) => s.status === 'ACTIVE')
-            .reduce((sum, s) => sum + (s.servicePlan?.priceCents || 0), 0),
-          items,
-        };
-      }
+    queryFn: async () => {
+      const { data } = await api.get<{
+        total: number;
+        active: number;
+        suspended: number;
+        pending: number;
+        outstanding: number;
+        monthlyRevenue: number;
+        recent: Array<{ id: string; fullName: string; accountNo: string; status: Subscriber['status'] }>;
+        owing: Array<{ id: string; fullName: string; accountNo: string; status: Subscriber['status']; balanceCents: number; dueDay: number }>;
+      }>('/stats/overview');
+      return data;
     },
   });
 }
@@ -250,5 +227,152 @@ export function useCreateCustomerLogin() {
       return data;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['subscriber', v.subscriberId] }),
+  });
+}
+
+// --- Staff scoping (municipalities + subscriber assignments) ---
+export function useStaffScope(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['staff-scope', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await api.get<{
+        municipalities: string[];
+        subscribers: Array<{ id: string; fullName: string; accountNo: string; municipality: string | null }>;
+      }>(`/users/${userId}/scope`);
+      return data;
+    },
+  });
+}
+
+export function useSetStaffMunicipalities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; municipalities: string[] }) =>
+      (await api.patch(`/users/${p.id}/municipalities`, { municipalities: p.municipalities })).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['staff-scope', v.id] });
+      qc.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+}
+
+export function useSetStaffAssignments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; subscriberIds: string[] }) =>
+      (await api.put(`/users/${p.id}/assignments`, { subscriberIds: p.subscriberIds })).data,
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['staff-scope', v.id] }),
+  });
+}
+
+// --- Subscriber status change ---
+export function useSetSubscriberStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; status: string }) =>
+      (await api.patch(`/subscribers/${p.id}/status`, { status: p.status })).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['subscriber', v.id] });
+      qc.invalidateQueries({ queryKey: ['subscribers'] });
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+    },
+  });
+}
+
+// --- Jobs / installations ---
+export function useJobs(params?: { status?: string; type?: string }) {
+  return useQuery({
+    queryKey: ['jobs', params],
+    queryFn: async () => (await api.get<Job[]>('/jobs', { params: params || {} })).data,
+  });
+}
+
+export function useJob(id: string | undefined) {
+  return useQuery({
+    queryKey: ['job', id],
+    enabled: !!id,
+    queryFn: async () => (await api.get<Job>(`/jobs/${id}`)).data,
+  });
+}
+
+export function useCreateJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; type?: string; technicianId?: string | null; scheduledAt?: string | null; notes?: string | null }) =>
+      (await api.post('/jobs', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+}
+
+export function useUpdateJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; technicianId?: string | null; scheduledAt?: string | null; status?: string; notes?: string | null }) => {
+      const { id, ...body } = p;
+      return (await api.patch(`/jobs/${id}`, body)).data;
+    },
+    onSuccess: (_d, v) => { qc.invalidateQueries({ queryKey: ['jobs'] }); qc.invalidateQueries({ queryKey: ['job', v.id] }); },
+  });
+}
+
+export function useStartJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/jobs/${id}/start`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+}
+
+export function useCompleteJob() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; equipmentUsed?: string; cpeModel?: string; serialNo?: string; routerMac?: string; notes?: string }) => {
+      const { id, ...body } = p;
+      return (await api.post(`/jobs/${id}/complete`, body)).data;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['jobs'] }); qc.invalidateQueries({ queryKey: ['owner-stats'] }); },
+  });
+}
+
+// --- Attendance (technician GPS time-in) ---
+export function useAttendanceToday() {
+  return useQuery({
+    queryKey: ['attendance-today'],
+    queryFn: async () => {
+      const { data } = await api.get<{ checkedIn: boolean; records: Array<{ id: string; timeIn: string; timeOut: string | null; gpsLat: number | null; gpsLng: number | null }> }>('/attendance/today');
+      return data;
+    },
+  });
+}
+
+export function useCheckIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { gpsLat?: number; gpsLng?: number; accuracyM?: number; note?: string }) =>
+      (await api.post('/attendance/check-in', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance-today'] }),
+  });
+}
+
+export function useCheckOut() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await api.post('/attendance/check-out')).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance-today'] }),
+  });
+}
+
+export function useAttendance(params?: { date?: string; technicianId?: string }) {
+  return useQuery({
+    queryKey: ['attendance', params],
+    queryFn: async () => {
+      const { data } = await api.get<Array<{
+        id: string; userId: string; technicianName: string;
+        timeIn: string; timeOut: string | null;
+        gpsLat: number | null; gpsLng: number | null; accuracyM: number | null;
+      }>>('/attendance', { params: params || {} });
+      return data;
+    },
   });
 }

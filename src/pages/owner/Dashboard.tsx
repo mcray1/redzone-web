@@ -24,9 +24,7 @@ export default function Dashboard() {
     { name: 'Pending', value: data.pending, color: '#f5a623' },
     { name: 'Suspended', value: data.suspended, color: '#d24545' },
   ];
-  const recent = [...data.items]
-    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-    .slice(0, 5);
+  const recent = data.recent;
 
   return (
     <div className="space-y-6">

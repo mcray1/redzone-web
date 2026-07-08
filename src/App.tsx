@@ -11,11 +11,14 @@ import Plans from './pages/owner/Plans';
 import Staff from './pages/owner/Staff';
 import Tickets from './pages/owner/Tickets';
 import Collector from './pages/collector/Collector';
+import Technician from './pages/technician/Technician';
+import Installations from './pages/owner/Installations';
 import Portal from './pages/portal/Portal';
 
 function landingFor(role: string) {
   if (role === 'OWNER' || role === 'ADMIN') return '/owner';
   if (role === 'COLLECTOR') return '/collector';
+  if (role === 'TECHNICIAN') return '/technician';
   return '/portal';
 }
 
@@ -49,9 +52,11 @@ export default function App() {
           <Route path="plans" element={<Plans />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="staff" element={<Staff />} />
+          <Route path="installations" element={<Installations />} />
         </Route>
 
         <Route path="/collector" element={<Protected roles={['COLLECTOR']}><Collector /></Protected>} />
+        <Route path="/technician" element={<Protected roles={['TECHNICIAN']}><Technician /></Protected>} />
 
         <Route path="/portal" element={<Protected roles={['CUSTOMER', 'COLLECTOR', 'OWNER', 'ADMIN']}><Portal /></Protected>} />
 

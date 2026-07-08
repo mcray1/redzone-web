@@ -8,6 +8,7 @@ const nav = [
   { to: '/owner/billing', label: 'Billing', icon: 'M3 6h18v12H3zM3 10h18' },
   { to: '/owner/plans', label: 'Plans', icon: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
   { to: '/owner/tickets', label: 'Tickets', icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z' },
+  { to: '/owner/installations', label: 'Installs', icon: 'M14 2l6 6-9 9H5v-6zM10 8l6 6' },
   { to: '/owner/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 .01M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
 ];
 
@@ -62,13 +63,13 @@ export default function OwnerLayout() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-white md:hidden"
+      {/* Mobile bottom nav — scrollable since there are many sections */}
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-line bg-white md:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {nav.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-600 ${
+              `flex min-w-[4.5rem] flex-1 shrink-0 flex-col items-center gap-1 py-2.5 text-[11px] font-600 ${
                 isActive ? 'text-signal-600' : 'text-ink/50'
               }`}>
             <Icon d={n.icon} />{n.label}

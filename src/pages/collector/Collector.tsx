@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscribers, useRecordPayment, useCollectorToday } from '../../hooks/queries';
+import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberStatus } from '../../hooks/queries';
 import { peso, type Subscriber } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 
@@ -87,6 +87,8 @@ interface PayForm { amount: number; method: string; reference?: string; }
 
 function CollectForm({ subscriber, onBack }: { subscriber: Subscriber; onBack: () => void }) {
   const pay = useRecordPayment();
+  const setStatus = useSetSubscriberStatus();
+  const [activated, setActivated] = useState(false);
   const [done, setDone] = useState<{ receiptNo: string } | null>(null);
   const { register, handleSubmit } = useForm<PayForm>({
     defaultValues: {
@@ -94,6 +96,8 @@ function CollectForm({ subscriber, onBack }: { subscriber: Subscriber; onBack: (
       method: 'CASH',
     },
   });
+
+  const isPending = subscriber.status === 'PENDING_INSTALLATION' && !activated;
 
   async function submit(v: PayForm) {
     const r = await pay.mutateAsync({
@@ -129,6 +133,17 @@ function CollectForm({ subscriber, onBack }: { subscriber: Subscriber; onBack: (
             {peso(Math.max(0, subscriber.balanceCents))}
           </p>
         </div>
+        {isPending && (
+          <button
+            className="btn-dark mt-3 w-full"
+            onClick={() => setStatus.mutate({ id: subscriber.id, status: 'ACTIVE' }, { onSuccess: () => setActivated(true) })}
+            disabled={setStatus.isPending}>
+            {setStatus.isPending ? 'Activating…' : 'Mark as Active (installed)'}
+          </button>
+        )}
+        {activated && (
+          <p className="mt-2 text-center text-sm text-good">Subscriber activated.</p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit(submit)} className="card space-y-3 p-5">

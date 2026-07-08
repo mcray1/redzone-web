@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useStaff, useCreateStaff, useSetStaffActive } from '../../hooks/queries';
 import { Spinner, EmptyState } from '../../components/ui';
+import { StaffScopeEditor } from './StaffScopeEditor';
 
 export default function Staff() {
   const { data: staff, isLoading } = useStaff();
   const setActive = useSetStaffActive();
   const [showAdd, setShowAdd] = useState(false);
+  const [scopeUserId, setScopeUserId] = useState<string | null>(null);
 
   return (
     <div className="space-y-5">
@@ -23,17 +25,27 @@ export default function Staff() {
       ) : (
         <div className="card divide-y divide-line overflow-hidden">
           {staff.map((u) => (
-            <div key={u.id} className="flex items-center justify-between px-4 py-3.5">
+            <div key={u.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
               <div className="min-w-0">
                 <p className="truncate font-600">{u.name} {u.role === 'OWNER' && <span className="text-xs text-ink/40">(you)</span>}</p>
-                <p className="text-xs text-ink/50">{u.email} · {u.role}</p>
+                <p className="text-xs text-ink/50">
+                  {u.email} · {u.role}
+                  {u.role !== 'OWNER' && u.municipalities && u.municipalities.length > 0 && (
+                    <> · {u.municipalities.join(', ')}</>
+                  )}
+                </p>
               </div>
               {u.role !== 'OWNER' && (
-                <button
-                  onClick={() => setActive.mutate({ id: u.id, active: !u.active })}
-                  className={`pill border ${u.active ? 'border-good/40 text-good' : 'border-ink/20 text-ink/40'}`}>
-                  {u.active ? 'Active' : 'Disabled'}
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button onClick={() => setScopeUserId(u.id)} className="text-sm font-600 text-signal-600">
+                    Coverage
+                  </button>
+                  <button
+                    onClick={() => setActive.mutate({ id: u.id, active: !u.active })}
+                    className={`pill border ${u.active ? 'border-good/40 text-good' : 'border-ink/20 text-ink/40'}`}>
+                    {u.active ? 'Active' : 'Disabled'}
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -41,11 +53,12 @@ export default function Staff() {
       )}
 
       {showAdd && <AddStaffModal onClose={() => setShowAdd(false)} />}
+      {scopeUserId && <StaffScopeEditor userId={scopeUserId} onClose={() => setScopeUserId(null)} />}
     </div>
   );
 }
 
-interface StaffForm { name: string; email: string; password: string; role: 'ADMIN' | 'COLLECTOR'; }
+interface StaffForm { name: string; email: string; password: string; role: 'ADMIN' | 'COLLECTOR' | 'TECHNICIAN'; }
 
 function AddStaffModal({ onClose }: { onClose: () => void }) {
   const create = useCreateStaff();
@@ -90,6 +103,7 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
             <label className="label">Role</label>
             <select className="input" {...register('role')}>
               <option value="COLLECTOR">Collector (mobile payments)</option>
+              <option value="TECHNICIAN">Technician (installs & repairs)</option>
               <option value="ADMIN">Administrator (full operations)</option>
             </select>
           </div>
