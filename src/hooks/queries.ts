@@ -627,3 +627,43 @@ export function useVerifyRemittance() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['remittances'] }),
   });
 }
+
+// --- Reports (owner/admin, scoped) ---
+export interface CollectionRow {
+  receiptNo: string; date: string; subscriber: string; accountNo: string;
+  municipality: string; barangay: string; method: string; reference: string;
+  collector: string; amountCents: number;
+}
+export interface CollectionsReport {
+  rows: CollectionRow[]; totalCents: number; count: number;
+  byMethod: Record<string, number>; byCollector: Record<string, number>;
+}
+export function useCollectionsReport(from: string, to: string) {
+  return useQuery({
+    queryKey: ['report-collections', from, to],
+    queryFn: async () => (await api.get<CollectionsReport>('/reports/collections', { params: { from, to } })).data,
+  });
+}
+
+export interface OutstandingRow {
+  accountNo: string; subscriber: string; phone: string; plan: string;
+  municipality: string; barangay: string; status: string; dueDay: number; balanceCents: number;
+}
+export interface OutstandingReport { rows: OutstandingRow[]; totalCents: number; count: number; }
+export function useOutstandingReport() {
+  return useQuery({
+    queryKey: ['report-outstanding'],
+    queryFn: async () => (await api.get<OutstandingReport>('/reports/outstanding')).data,
+  });
+}
+
+// Fetched on demand (for the CSV export button) rather than on page load.
+export interface SubscriberReportRow {
+  accountNo: string; name: string; phone: string; email: string; status: string;
+  plan: string; monthlyCents: number; dueDay: number; balanceCents: number;
+  sitio: string; barangay: string; municipality: string; address: string;
+}
+export async function fetchSubscriberReport(): Promise<SubscriberReportRow[]> {
+  const { data } = await api.get<{ rows: SubscriberReportRow[] }>('/reports/subscribers');
+  return data.rows;
+}

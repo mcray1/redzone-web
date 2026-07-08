@@ -13,6 +13,7 @@ const nav = [
   { to: '/owner/installations', label: 'Installs', icon: 'M14 2l6 6-9 9H5v-6zM10 8l6 6' },
   { to: '/owner/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 .01M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
   { to: '/owner/payroll', label: 'Payroll', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+  { to: '/owner/reports', label: 'Reports', icon: 'M9 17V9M15 17v-4M4 4h16v16H4zM4 8h16' },
 ];
 
 function Icon({ d }: { d: string }) {
