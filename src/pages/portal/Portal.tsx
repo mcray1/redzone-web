@@ -5,6 +5,7 @@ import { useMyAccount, useTickets, useCreateTicket } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
 /**
  * Customer portal. The logged-in customer's subscriber record comes from the
@@ -14,19 +15,27 @@ export default function Portal() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const { data: s, isLoading } = useMyAccount();
+  const [pwOpen, setPwOpen] = useState(false);
 
   return (
     <div className="min-h-full bg-paper pb-10">
       <header className="bg-ink px-5 pb-8 pt-5 text-white">
         <div className="flex items-center justify-between">
           <Logo light />
-          <button onClick={() => { logout(); nav('/login'); }} className="text-sm font-600 text-white/60">
-            Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-white/60">
+              Password
+            </button>
+            <button onClick={() => { logout(); nav('/login'); }} className="text-sm font-600 text-white/60">
+              Sign out
+            </button>
+          </div>
         </div>
         <p className="mt-6 text-sm text-white/50">Hello,</p>
         <h1 className="font-display text-2xl font-700">{user?.name}</h1>
       </header>
+
+      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
 
       <main className="mx-auto -mt-5 max-w-md space-y-4 px-4">
         {isLoading ? <Spinner /> : !s ? (

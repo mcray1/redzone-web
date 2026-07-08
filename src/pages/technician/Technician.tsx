@@ -5,6 +5,7 @@ import { useJobs, useStartJob, useCompleteJob } from '../../hooks/queries';
 import type { Job, JobStatus } from '../../api/types';
 import { Logo, Spinner, SignalMark } from '../../components/ui';
 import { AttendanceCard } from '../../components/AttendanceCard';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
 const STATUS_STYLE: Record<JobStatus, string> = {
   SCHEDULED: 'bg-signal/15 text-warn',
@@ -19,6 +20,7 @@ const STATUS_LABEL: Record<JobStatus, string> = {
 export default function Technician() {
   const { user, logout } = useAuth();
   const [openJob, setOpenJob] = useState<Job | null>(null);
+  const [pwOpen, setPwOpen] = useState(false);
   const { data: jobs, isLoading } = useJobs();
 
   const active = (jobs ?? []).filter((j) => j.status === 'SCHEDULED' || j.status === 'IN_PROGRESS');
@@ -28,10 +30,14 @@ export default function Technician() {
 
   return (
     <div className="min-h-full bg-paper pb-10">
+      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
       <header className="bg-ink px-5 pb-5 pt-5 text-white">
         <div className="flex items-center justify-between">
           <Logo light />
-          <button onClick={logout} className="text-sm font-600 text-white/60">Sign out</button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-white/60">Password</button>
+            <button onClick={logout} className="text-sm font-600 text-white/60">Sign out</button>
+          </div>
         </div>
         <p className="mt-4 text-sm text-white/50">Technician</p>
         <h1 className="font-display text-xl font-700">{user?.name}</h1>

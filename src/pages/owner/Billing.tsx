@@ -28,7 +28,7 @@ export default function Billing() {
         </div>
         <div className="card px-5 py-4">
           <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Accounts owing</p>
-          <p className="mt-1.5 font-display text-2xl font-700">{owing.length}</p>
+          <p className="mt-1.5 font-display text-2xl font-700">{data.owingCount}</p>
         </div>
       </div>
 

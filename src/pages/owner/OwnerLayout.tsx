@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Logo } from '../../components/ui';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
 const nav = [
   { to: '/owner', label: 'Overview', end: true, icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
@@ -24,6 +26,7 @@ function Icon({ d }: { d: string }) {
 export default function OwnerLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [pwOpen, setPwOpen] = useState(false);
 
   return (
     <div className="min-h-full md:flex">
@@ -44,8 +47,10 @@ export default function OwnerLayout() {
         <div className="border-t border-line p-3">
           <p className="px-2 text-sm font-600 text-ink">{user?.name}</p>
           <p className="px-2 text-xs text-ink/50">{user?.role}</p>
+          <button onClick={() => setPwOpen(true)}
+            className="btn-ghost mt-2 w-full justify-start text-sm">Change password</button>
           <button onClick={() => { logout(); navigate('/login'); }}
-            className="btn-ghost mt-2 w-full justify-start text-sm">Sign out</button>
+            className="btn-ghost mt-1 w-full justify-start text-sm">Sign out</button>
         </div>
       </aside>
 
@@ -54,8 +59,11 @@ export default function OwnerLayout() {
         {/* Mobile top bar */}
         <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 md:hidden">
           <Logo />
-          <button onClick={() => { logout(); navigate('/login'); }}
-            className="text-sm font-600 text-ink/60">Sign out</button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-ink/60">Password</button>
+            <button onClick={() => { logout(); navigate('/login'); }}
+              className="text-sm font-600 text-ink/60">Sign out</button>
+          </div>
         </header>
 
         <main className="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
@@ -76,6 +84,8 @@ export default function OwnerLayout() {
           </NavLink>
         ))}
       </nav>
+
+      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
     </div>
   );
 }

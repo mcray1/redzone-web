@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus } from '../../hooks/queries';
-import { peso, type SubscriberStatus } from '../../api/types';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans } from '../../hooks/queries';
+import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
+import { LocationSelect } from '../../components/LocationSelect';
 
 export default function SubscriberDetail() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function SubscriberDetail() {
   const { data: s, isLoading } = useSubscriber(id);
   const [payOpen, setPayOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading || !s) return <Spinner />;
 
@@ -24,7 +26,10 @@ export default function SubscriberDetail() {
             <h1 className="font-display text-xl font-700">{s.fullName}</h1>
             <p className="text-sm text-ink/50">{s.accountNo}</p>
           </div>
-          <StatusPill status={s.status} />
+          <div className="flex items-center gap-3">
+            <button className="text-sm font-600 text-signal-600" onClick={() => setEditOpen(true)}>Edit</button>
+            <StatusPill status={s.status} />
+          </div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
@@ -85,6 +90,7 @@ export default function SubscriberDetail() {
         </button>
       </div>
 
+      {editOpen && <EditSubscriberModal sub={s} onClose={() => setEditOpen(false)} />}
       {payOpen && <PaymentModal subscriberId={s.id} balanceCents={s.balanceCents} onClose={() => setPayOpen(false)} />}
       {loginOpen && (
         <CustomerLoginModal
@@ -159,6 +165,111 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
             </form>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface EditVals {
+  fullName: string; phone?: string; email?: string; address?: string;
+  municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number;
+}
+
+function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
+  const update = useUpdateSubscriber();
+  const { data: plans } = usePlans();
+  const [error, setError] = useState<string | null>(null);
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<EditVals>({
+    defaultValues: {
+      fullName: sub.fullName,
+      phone: sub.phone ?? '',
+      email: sub.email ?? '',
+      address: sub.address ?? '',
+      municipality: sub.municipality ?? '',
+      barangay: sub.barangay ?? '',
+      servicePlanId: sub.servicePlan?.id ?? '',
+      dueDay: sub.dueDay,
+    },
+  });
+  const municipality = watch('municipality') || '';
+  const barangay = watch('barangay') || '';
+
+  async function submit(v: EditVals) {
+    setError(null);
+    try {
+      await update.mutateAsync({
+        id: sub.id,
+        data: {
+          fullName: v.fullName,
+          phone: v.phone,
+          email: v.email,
+          address: v.address,
+          municipality: v.municipality,
+          barangay: v.barangay,
+          servicePlanId: v.servicePlanId,
+          dueDay: v.dueDay ? Number(v.dueDay) : undefined,
+        },
+      });
+      onClose();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg || 'Could not save the changes.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="font-display text-lg font-700">Edit subscriber</h2>
+        <form onSubmit={handleSubmit(submit)} className="mt-4 grid grid-cols-2 gap-3">
+          <input type="hidden" {...register('municipality')} />
+          <input type="hidden" {...register('barangay')} />
+          <div className="col-span-2">
+            <label className="label">Full name</label>
+            <input className="input" {...register('fullName', { required: true })} />
+            {errors.fullName && <p className="mt-1 text-xs text-bad">Required</p>}
+          </div>
+          <div className="col-span-1">
+            <label className="label">Phone</label>
+            <input className="input" {...register('phone')} />
+          </div>
+          <div className="col-span-1">
+            <label className="label">Email</label>
+            <input className="input" type="email" {...register('email')} />
+          </div>
+          <div className="col-span-2">
+            <label className="label">Address</label>
+            <input className="input" {...register('address')} />
+          </div>
+          <div className="col-span-2">
+            <LocationSelect
+              municipality={municipality}
+              barangay={barangay}
+              onMunicipality={(v) => setValue('municipality', v)}
+              onBarangay={(v) => setValue('barangay', v)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="label">Due day</label>
+            <input className="input" type="number" min={1} max={28} {...register('dueDay')} />
+          </div>
+          <div className="col-span-1">
+            <label className="label">Service plan</label>
+            <select className="input" {...register('servicePlanId')}>
+              <option value="">— No plan —</option>
+              {plans?.filter((p) => p.active).map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({peso(p.priceCents)}/mo)</option>
+              ))}
+            </select>
+          </div>
+          {error && <p className="col-span-2 text-sm text-bad">{error}</p>}
+          <div className="col-span-2 mt-2 flex gap-2">
+            <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
+            <button className="btn-primary flex-1" disabled={update.isPending}>
+              {update.isPending ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

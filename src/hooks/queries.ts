@@ -69,6 +69,7 @@ export function useOwnerStats() {
         suspended: number;
         pending: number;
         outstanding: number;
+        owingCount: number;
         monthlyRevenue: number;
         recent: Array<{ id: string; fullName: string; accountNo: string; status: Subscriber['status'] }>;
         owing: Array<{ id: string; fullName: string; accountNo: string; status: Subscriber['status']; balanceCents: number; dueDay: number }>;
@@ -403,5 +404,27 @@ export function useRunBilling() {
       qc.invalidateQueries({ queryKey: ['owner-stats'] });
       qc.invalidateQueries({ queryKey: ['subscribers'] });
     },
+  });
+}
+
+// Edit a subscriber's everyday details (owner/admin).
+export function useUpdateSubscriber() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; data: Record<string, unknown> }) =>
+      (await api.patch(`/subscribers/${p.id}`, p.data)).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['subscriber', v.id] });
+      qc.invalidateQueries({ queryKey: ['subscribers'] });
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+    },
+  });
+}
+
+// Any logged-in user changes their own password.
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (p: { currentPassword: string; newPassword: string }) =>
+      (await api.post('/auth/change-password', p)).data,
   });
 }

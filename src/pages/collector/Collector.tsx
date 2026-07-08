@@ -4,17 +4,23 @@ import { useAuth } from '../../context/AuthContext';
 import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberStatus } from '../../hooks/queries';
 import { peso, type Subscriber } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
 export default function Collector() {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState<'collect' | 'today'>('collect');
+  const [pwOpen, setPwOpen] = useState(false);
 
   return (
     <div className="min-h-full bg-paper pb-24">
+      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
       <header className="bg-ink px-5 pb-5 pt-5 text-white">
         <div className="flex items-center justify-between">
           <Logo light />
-          <button onClick={logout} className="text-sm font-600 text-white/60">Sign out</button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-white/60">Password</button>
+            <button onClick={logout} className="text-sm font-600 text-white/60">Sign out</button>
+          </div>
         </div>
         <p className="mt-4 text-sm text-white/50">Collector</p>
         <h1 className="font-display text-xl font-700">{user?.name}</h1>
