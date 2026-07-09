@@ -14,6 +14,7 @@ export type PermissionKey =
   | 'expenses.approve'
   | 'plans.manage'
   | 'jobs.manage'
+  | 'registrations.review'
   | 'tickets.manage'
   | 'inventory.view'
   | 'inventory.manage'
@@ -324,6 +325,38 @@ export interface InventoryMovement {
   quantity: number;
   note?: string | null;
   createdAt: string;
+}
+
+// --- Client registrations (public sign-ups) ---
+export interface PublicPlan {
+  id: string;
+  name: string;
+  priceCents: number;
+  downloadKbps: number;
+  uploadKbps: number;
+}
+
+export type RegistrationType = 'PLAN' | 'VENDO';
+export type RegistrationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface Registration {
+  id: string;
+  type: RegistrationType;
+  status: RegistrationStatus;
+  fullName: string;
+  phone: string;
+  email?: string | null;
+  address?: string | null;
+  sitio?: string | null;
+  barangay?: string | null;
+  municipality?: string | null;
+  servicePlanId?: string | null;
+  servicePlan?: { id: string; name: string; priceCents: number } | null;
+  notes?: string | null;
+  rejectReason?: string | null;
+  subscriberId?: string | null;
+  createdAt: string;
+  decidedAt?: string | null;
 }
 
 // --- CPE devices (GenieACS / TR-069) ---

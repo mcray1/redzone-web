@@ -11,6 +11,7 @@ function NeedsAttention() {
   if (!data) return null;
 
   const items = [
+    { n: data.pendingRegistrations, label: 'new registration', to: '/owner/registrations' },
     { n: data.pendingExtensions, label: 'payment extension', to: '/owner/billing' },
     { n: data.pendingExpenses, label: 'expense request', to: '/owner/expenses' },
     { n: data.pendingAdvances, label: 'advance request', to: '/owner/payroll' },

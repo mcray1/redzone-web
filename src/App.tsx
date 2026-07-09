@@ -22,6 +22,8 @@ import Inventory from './pages/owner/Inventory';
 import Network from './pages/owner/Network';
 import Devices from './pages/owner/Devices';
 import Portal from './pages/portal/Portal';
+import Register from './pages/Register';
+import Registrations from './pages/owner/Registrations';
 
 function landingFor(role: string) {
   if (role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER') return '/owner';
@@ -51,12 +53,14 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/" element={<Home />} />
 
         <Route path="/owner" element={<Protected roles={['OWNER', 'ADMIN', 'MANAGER']}><OwnerLayout /></Protected>}>
           <Route index element={<Dashboard />} />
           <Route path="subscribers" element={<Subscribers />} />
           <Route path="subscribers/:id" element={<SubscriberDetail />} />
+          <Route path="registrations" element={<Registrations />} />
           <Route path="billing" element={<Billing />} />
           <Route path="plans" element={<Plans />} />
           <Route path="tickets" element={<Tickets />} />

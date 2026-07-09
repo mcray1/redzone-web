@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -479,7 +479,7 @@ export interface BillingRunResult {
 export interface Attention {
   pendingAdvances: number; pendingRemittances: number;
   openTickets: number; scheduledJobs: number; overdueInvoices: number;
-  pendingExtensions: number; pendingExpenses: number;
+  pendingExtensions: number; pendingExpenses: number; pendingRegistrations: number;
 }
 export function useAttention() {
   return useQuery({
@@ -1010,5 +1010,62 @@ export function useSetCpePppoe() {
       return (await api.post(`/cpe/subscriber/${subscriberId}/pppoe`, body)).data;
     },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', v.subscriberId] }),
+  });
+}
+
+// --- Client registrations ---
+// Public (no login): the plans a prospective client can choose from.
+export function usePublicPlans() {
+  return useQuery({
+    queryKey: ['public-plans'],
+    queryFn: async () => (await api.get<PublicPlan[]>('/public/plans')).data,
+  });
+}
+
+// Public (no login): submit a registration.
+export function useSubmitRegistration() {
+  return useMutation({
+    mutationFn: async (p: {
+      fullName: string; phone: string; email?: string; address?: string;
+      sitio?: string; barangay?: string; municipality?: string; servicePlanId?: string; notes?: string;
+    }) => (await api.post('/public/register', p)).data,
+  });
+}
+
+// Staff: review queue.
+export function useRegistrations(status?: string) {
+  return useQuery({
+    queryKey: ['registrations', status],
+    queryFn: async () => (await api.get<Registration[]>('/registrations', { params: status ? { status } : {} })).data,
+  });
+}
+
+export function useApproveRegistration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      id: string; accountNo: string; servicePlanId?: string | null; dueDay?: number;
+      fullName?: string; phone?: string; email?: string; address?: string; sitio?: string; barangay?: string; municipality?: string;
+    }) => {
+      const { id, ...body } = p;
+      return (await api.post(`/registrations/${id}/approve`, body)).data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['registrations'] });
+      qc.invalidateQueries({ queryKey: ['subscribers'] });
+      qc.invalidateQueries({ queryKey: ['attention'] });
+    },
+  });
+}
+
+export function useRejectRegistration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; reason: string }) =>
+      (await api.post(`/registrations/${p.id}/reject`, { reason: p.reason })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['registrations'] });
+      qc.invalidateQueries({ queryKey: ['attention'] });
+    },
   });
 }
