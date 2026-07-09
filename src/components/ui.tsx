@@ -1,4 +1,4 @@
-import type { SubscriberStatus } from '../api/types';
+import type { SubscriberStatus, JobStatus } from '../api/types';
 
 // Signature element: signal bars climbing — RedZone bringing connectivity.
 export function SignalMark({ className = 'h-7 w-7' }: { className?: string }) {
@@ -45,6 +45,19 @@ export function StatusPill({ status }: { status: SubscriberStatus }) {
       {STATUS_LABEL[status]}
     </span>
   );
+}
+
+const JOB_STATUS_STYLE: Record<JobStatus, string> = {
+  SCHEDULED: 'bg-signal/15 text-warn',
+  IN_PROGRESS: 'bg-ink/10 text-ink/70',
+  COMPLETED: 'bg-good/10 text-good',
+  CANCELLED: 'bg-ink/5 text-ink/40',
+};
+const JOB_STATUS_LABEL: Record<JobStatus, string> = {
+  SCHEDULED: 'Scheduled', IN_PROGRESS: 'In progress', COMPLETED: 'Completed', CANCELLED: 'Cancelled',
+};
+export function JobStatusPill({ status }: { status: JobStatus }) {
+  return <span className={`pill shrink-0 ${JOB_STATUS_STYLE[status]}`}>{JOB_STATUS_LABEL[status]}</span>;
 }
 
 export function Spinner() {

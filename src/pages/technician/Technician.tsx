@@ -2,21 +2,11 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
 import { useJobs, useStartJob, useCompleteJob } from '../../hooks/queries';
-import type { Job, JobStatus } from '../../api/types';
-import { Logo, Spinner, SignalMark } from '../../components/ui';
+import type { Job } from '../../api/types';
+import { Logo, Spinner, SignalMark, JobStatusPill } from '../../components/ui';
 import { AttendanceCard } from '../../components/AttendanceCard';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { MySalarySection } from '../../components/MySalarySection';
-
-const STATUS_STYLE: Record<JobStatus, string> = {
-  SCHEDULED: 'bg-signal/15 text-warn',
-  IN_PROGRESS: 'bg-ink/10 text-ink/70',
-  COMPLETED: 'bg-good/10 text-good',
-  CANCELLED: 'bg-ink/5 text-ink/40',
-};
-const STATUS_LABEL: Record<JobStatus, string> = {
-  SCHEDULED: 'Scheduled', IN_PROGRESS: 'In progress', COMPLETED: 'Completed', CANCELLED: 'Cancelled',
-};
 
 export default function Technician() {
   const { user, logout } = useAuth();
@@ -76,7 +66,7 @@ export default function Technician() {
                       {j.subscriber.municipality ? `, ${j.subscriber.municipality}` : ''}
                     </p>
                   </div>
-                  <span className={`pill shrink-0 ${STATUS_STYLE[j.status]}`}>{STATUS_LABEL[j.status]}</span>
+                  <JobStatusPill status={j.status} />
                 </button>
               ))}
             </div>

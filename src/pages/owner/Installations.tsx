@@ -2,17 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useJobs, useUpdateJob, useStaff, useAttendance } from '../../hooks/queries';
 import type { Job, JobStatus } from '../../api/types';
-import { Spinner, EmptyState } from '../../components/ui';
-
-const STATUS_STYLE: Record<JobStatus, string> = {
-  SCHEDULED: 'bg-signal/15 text-warn',
-  IN_PROGRESS: 'bg-ink/10 text-ink/70',
-  COMPLETED: 'bg-good/10 text-good',
-  CANCELLED: 'bg-ink/5 text-ink/40',
-};
-const STATUS_LABEL: Record<JobStatus, string> = {
-  SCHEDULED: 'Scheduled', IN_PROGRESS: 'In progress', COMPLETED: 'Completed', CANCELLED: 'Cancelled',
-};
+import { Spinner, EmptyState, JobStatusPill } from '../../components/ui';
 
 const FILTERS = [
   { key: 'SCHEDULED', label: 'Scheduled' },
@@ -71,7 +61,7 @@ export default function Installations() {
                   {j.scheduledAt ? ` · ${new Date(j.scheduledAt).toLocaleDateString('en-PH')}` : ' · unscheduled'}
                 </p>
               </div>
-              <span className={`pill shrink-0 ${STATUS_STYLE[j.status]}`}>{STATUS_LABEL[j.status]}</span>
+              <JobStatusPill status={j.status} />
             </button>
           ))}
         </div>
