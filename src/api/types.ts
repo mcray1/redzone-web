@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  roles?: Role[];
   branchId?: string | null;
 }
 
@@ -111,6 +112,7 @@ export interface StaffUser {
   name: string;
   email: string;
   role: Role;
+  roles?: Role[];
   active: boolean;
   municipalities?: string[];
   createdAt: string;

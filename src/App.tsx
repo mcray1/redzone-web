@@ -30,7 +30,8 @@ function landingFor(role: string) {
 function Protected({ roles, children }: { roles: string[]; children: ReactNode }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (!roles.includes(user.role)) {
+  const held: string[] = user.roles && user.roles.length ? user.roles : [user.role];
+  if (!roles.some((r) => held.includes(r))) {
     return <Navigate to={landingFor(user.role)} replace />;
   }
   return <>{children}</>;

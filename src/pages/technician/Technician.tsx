@@ -8,6 +8,7 @@ import { AttendanceCard } from '../../components/AttendanceCard';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { MySalarySection } from '../../components/MySalarySection';
 import { StaffExpenses } from '../../components/StaffExpenses';
+import { RoleSwitcher } from '../../components/RoleSwitcher';
 
 export default function Technician() {
   const { user, logout } = useAuth();
@@ -29,6 +30,7 @@ export default function Technician() {
         <div className="flex items-center justify-between">
           <Logo light />
           <div className="flex items-center gap-3">
+            <RoleSwitcher current="technician" />
             <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-white/60">Password</button>
             <button onClick={logout} className="text-sm font-600 text-white/60">Sign out</button>
           </div>

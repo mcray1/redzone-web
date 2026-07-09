@@ -7,6 +7,7 @@ import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { MySalarySection } from '../../components/MySalarySection';
 import { StaffExpenses } from '../../components/StaffExpenses';
+import { RoleSwitcher } from '../../components/RoleSwitcher';
 
 export default function Collector() {
   const { user, logout } = useAuth();
@@ -20,6 +21,7 @@ export default function Collector() {
         <div className="flex items-center justify-between">
           <Logo light />
           <div className="flex items-center gap-3">
+            <RoleSwitcher current="collector" />
             <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-white/60">Password</button>
             <button onClick={logout} className="text-sm font-600 text-white/60">Sign out</button>
           </div>

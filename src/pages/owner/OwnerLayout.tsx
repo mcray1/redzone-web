@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Logo } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+import { RoleSwitcher } from '../../components/RoleSwitcher';
 
 interface NavItem { to: string; label: string; end?: boolean; icon: string; }
 
@@ -88,6 +89,7 @@ export default function OwnerLayout() {
         <div className="border-t border-line p-3">
           <p className="px-2 text-sm font-600 text-ink">{user?.name}</p>
           <p className="px-2 text-xs text-ink/50">{user?.role}</p>
+          <div className="px-2 pt-2"><RoleSwitcher current="owner" tone="light" /></div>
           <button onClick={() => setPwOpen(true)}
             className="btn-ghost mt-2 w-full justify-start text-sm">Change password</button>
           <button onClick={() => { logout(); navigate('/login'); }}

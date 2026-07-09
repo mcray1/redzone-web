@@ -147,6 +147,15 @@ export function useSetStaffActive() {
   });
 }
 
+export function useSetStaffRoles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; roles: string[] }) =>
+      (await api.patch(`/users/${p.id}/roles`, { roles: p.roles })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  });
+}
+
 // --- Collector ---
 export function useCollectorToday() {
   return useQuery({
