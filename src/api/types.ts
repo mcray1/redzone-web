@@ -38,6 +38,7 @@ export interface Subscriber {
   balanceCents: number;
   dueDay: number;
   lateFeeEnabled?: boolean;
+  billingExempt?: boolean;
   pppoeUsername?: string | null;
   loginUser?: { id: string; email: string; active: boolean } | null;
   createdAt: string;

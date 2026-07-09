@@ -30,6 +30,7 @@ export default function SubscriberDetail() {
           </div>
           <div className="flex items-center gap-3">
             <button className="text-sm font-600 text-signal-600" onClick={() => setEditOpen(true)}>Edit</button>
+            {s.billingExempt && <span className="pill bg-ink/10 text-ink/60">Free</span>}
             <StatusPill status={s.status} />
           </div>
         </div>
@@ -192,7 +193,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 interface EditVals {
   fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
   municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number; lateFeeEnabled?: boolean;
-  pppoeUsername?: string;
+  billingExempt?: boolean; pppoeUsername?: string;
 }
 
 function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
@@ -211,6 +212,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       servicePlanId: sub.servicePlan?.id ?? '',
       dueDay: sub.dueDay,
       lateFeeEnabled: sub.lateFeeEnabled ?? false,
+      billingExempt: sub.billingExempt ?? false,
       pppoeUsername: sub.pppoeUsername ?? '',
     },
   });
@@ -233,6 +235,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           servicePlanId: v.servicePlanId,
           dueDay: v.dueDay ? Number(v.dueDay) : undefined,
           lateFeeEnabled: !!v.lateFeeEnabled,
+          billingExempt: !!v.billingExempt,
           pppoeUsername: v.pppoeUsername,
         },
       });
@@ -299,6 +302,10 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           <label className="col-span-2 flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4" {...register('lateFeeEnabled')} />
             Charge late fees on this account
+          </label>
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" {...register('billingExempt')} />
+            Free account — never bill this subscriber
           </label>
           {error && <p className="col-span-2 text-sm text-bad">{error}</p>}
           <div className="col-span-2 mt-2 flex gap-2">
