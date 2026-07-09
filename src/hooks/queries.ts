@@ -1046,6 +1046,7 @@ export function useApproveRegistration() {
     mutationFn: async (p: {
       id: string; accountNo: string; servicePlanId?: string | null; dueDay?: number;
       fullName?: string; phone?: string; email?: string; address?: string; sitio?: string; barangay?: string; municipality?: string;
+      loginEmail?: string; loginPassword?: string;
     }) => {
       const { id, ...body } = p;
       return (await api.post(`/registrations/${id}/approve`, body)).data;

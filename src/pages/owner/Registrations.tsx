@@ -92,17 +92,26 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
   const [accountNo, setAccountNo] = useState('');
   const [servicePlanId, setServicePlanId] = useState(reg.servicePlanId ?? '');
   const [dueDay, setDueDay] = useState('1');
+  const [makeLogin, setMakeLogin] = useState(false);
+  const [loginEmail, setLoginEmail] = useState(reg.email ?? '');
+  const [loginPassword, setLoginPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
   async function go() {
     setErr(null);
     if (!accountNo.trim()) { setErr('Enter an account number.'); return; }
+    if (makeLogin && (!loginEmail.trim() || loginPassword.length < 8)) {
+      setErr('For a portal login, enter an email and a password of at least 8 characters.');
+      return;
+    }
     try {
       const res = await approve.mutateAsync({
         id: reg.id,
         accountNo: accountNo.trim(),
         servicePlanId: servicePlanId || null,
         dueDay: Number(dueDay) || 1,
+        loginEmail: makeLogin ? loginEmail.trim() : undefined,
+        loginPassword: makeLogin ? loginPassword : undefined,
       });
       onClose();
       if (res?.subscriberId) nav(`/owner/subscribers/${res.subscriberId}`);
@@ -136,6 +145,21 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
               <input className="input" type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
             </div>
           </div>
+
+          <div className="rounded-xl border border-line p-3">
+            <label className="flex items-center gap-2 text-sm font-600">
+              <input type="checkbox" className="h-4 w-4 accent-signal-600" checked={makeLogin} onChange={(e) => setMakeLogin(e.target.checked)} />
+              Also create a portal login now
+            </label>
+            {makeLogin && (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input className="input" type="email" placeholder="login email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+                <input className="input" type="text" placeholder="temp password (min 8)" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                <p className="text-xs text-ink/40 sm:col-span-2">Share this with the customer; they can change it after signing in.</p>
+              </div>
+            )}
+          </div>
+
           {err && <p className="text-sm text-bad">{err}</p>}
           <div className="flex gap-2 pt-1">
             <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
