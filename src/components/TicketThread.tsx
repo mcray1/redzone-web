@@ -15,8 +15,9 @@ const STATUS_LABEL: Record<TicketStatus, string> = {
 };
 
 export function TicketThread({ id, onBack }: { id: string; onBack: () => void }) {
-  const { user } = useAuth();
-  const isStaff = user?.role === 'OWNER' || user?.role === 'ADMIN';
+  const { hasPerm } = useAuth();
+  // Changing status is a manage action; owners/admins always qualify.
+  const isStaff = hasPerm('tickets.manage');
   const { data: ticket, isLoading } = useTicket(id);
   const reply = useReplyTicket();
   const update = useUpdateTicket();

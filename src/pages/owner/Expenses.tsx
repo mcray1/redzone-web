@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useExpenses, usePnl, useSaveExpense, useVoidExpense, usePendingExpenses, useDecideExpense } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import { peso, type Expense } from '../../api/types';
 import { toCsv, downloadCsv, todayStamp, type CsvColumn } from '../../lib/csv';
 import { Spinner } from '../../components/ui';
@@ -25,8 +26,14 @@ export default function Expenses() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [adding, setAdding] = useState(false);
 
-  const { data: pnl } = usePnl(from, to);
-  const { data, isLoading } = useExpenses({ from, to, category: category || undefined });
+  const { user, hasPerm } = useAuth();
+  const canViewReports = hasPerm('reports.view');
+  const canApprove = hasPerm('expenses.approve');
+  // Editing and voiding a recorded expense are never delegated — owner/admin only.
+  const isAdmin = (user?.roles ?? [user?.role]).some((r) => r === 'OWNER' || r === 'ADMIN');
+
+  const { data: pnl } = usePnl(from, to, { enabled: canViewReports });
+  const { data, isLoading } = useExpenses({ from, to, category: category || undefined }, { enabled: canViewReports });
   const voidExpense = useVoidExpense();
 
   function exportCsv() {
@@ -56,23 +63,26 @@ export default function Expenses() {
       </div>
 
       {/* Profit / loss */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="card px-4 py-3">
-          <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Income</p>
-          <p className="mt-1 font-display text-lg font-700 text-good">{peso(pnl?.incomeCents ?? 0)}</p>
+      {canViewReports && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card px-4 py-3">
+            <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Income</p>
+            <p className="mt-1 font-display text-lg font-700 text-good">{peso(pnl?.incomeCents ?? 0)}</p>
+          </div>
+          <div className="card px-4 py-3">
+            <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Expenses</p>
+            <p className="mt-1 font-display text-lg font-700 text-bad">{peso(pnl?.expenseCents ?? 0)}</p>
+          </div>
+          <div className="card px-4 py-3">
+            <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Net</p>
+            <p className={`mt-1 font-display text-lg font-700 ${(pnl?.netCents ?? 0) < 0 ? 'text-bad' : 'text-ink'}`}>{peso(pnl?.netCents ?? 0)}</p>
+          </div>
         </div>
-        <div className="card px-4 py-3">
-          <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Expenses</p>
-          <p className="mt-1 font-display text-lg font-700 text-bad">{peso(pnl?.expenseCents ?? 0)}</p>
-        </div>
-        <div className="card px-4 py-3">
-          <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Net</p>
-          <p className={`mt-1 font-display text-lg font-700 ${(pnl?.netCents ?? 0) < 0 ? 'text-bad' : 'text-ink'}`}>{peso(pnl?.netCents ?? 0)}</p>
-        </div>
-      </div>
+      )}
 
-      <PendingExpenses />
+      {canApprove && <PendingExpenses />}
 
+      {canViewReports && (<>
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-wrap items-end gap-2">
@@ -125,17 +135,20 @@ export default function Expenses() {
                 <div className="flex shrink-0 items-center gap-3">
                   {e.receiptPath && <ProofLink path={e.receiptPath} label="Receipt" />}
                   <span className="font-600 text-bad">{peso(e.amountCents)}</span>
-                  <button className="text-xs font-600 text-ink/50" onClick={() => setEditing(e)}>Edit</button>
-                  <button className="text-xs font-600 text-bad"
-                    onClick={() => { if (window.confirm('Void this expense?')) voidExpense.mutate(e.id); }}>
-                    Void
-                  </button>
+                  {isAdmin && <button className="text-xs font-600 text-ink/50" onClick={() => setEditing(e)}>Edit</button>}
+                  {isAdmin && (
+                    <button className="text-xs font-600 text-bad"
+                      onClick={() => { if (window.confirm('Void this expense?')) voidExpense.mutate(e.id); }}>
+                      Void
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
           </ul>
         )}
       </div>
+      </>)}
 
       {(adding || editing) && (
         <ExpenseModal expense={editing} onClose={() => { setAdding(false); setEditing(null); }} />

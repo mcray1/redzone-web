@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useInventory, useSaveItem, useAdjustStock, useItemMovements } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import type { InventoryItem, MovementType } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
 
@@ -19,6 +20,8 @@ const MOVE_LABEL: Record<MovementType, string> = {
 const ADD_TYPES = new Set<MovementType>(['STOCK_IN', 'RETURNED']);
 
 export default function Inventory() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm('inventory.manage');
   const { data, isLoading } = useInventory();
   const [editing, setEditing] = useState<InventoryItem | 'new' | null>(null);
   const [adjusting, setAdjusting] = useState<InventoryItem | null>(null);
@@ -30,7 +33,7 @@ export default function Inventory() {
           <h1 className="font-display text-2xl font-700">Inventory</h1>
           <p className="text-sm text-ink/50">Equipment and materials on hand.</p>
         </div>
-        <button className="btn-primary shrink-0" onClick={() => setEditing('new')}>Add item</button>
+        {canManage && <button className="btn-primary shrink-0" onClick={() => setEditing('new')}>Add item</button>}
       </div>
 
       {isLoading ? (
@@ -41,16 +44,23 @@ export default function Inventory() {
         <div className="card divide-y divide-line overflow-hidden">
           {data.map((i) => (
             <div key={i.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
-              <button className="min-w-0 text-left" onClick={() => setEditing(i)}>
-                <p className="truncate font-600">{i.name}</p>
-                <p className="text-xs text-ink/50">{i.category}{i.sku ? ` · ${i.sku}` : ''}</p>
-              </button>
+              {canManage ? (
+                <button className="min-w-0 text-left" onClick={() => setEditing(i)}>
+                  <p className="truncate font-600">{i.name}</p>
+                  <p className="text-xs text-ink/50">{i.category}{i.sku ? ` · ${i.sku}` : ''}</p>
+                </button>
+              ) : (
+                <div className="min-w-0">
+                  <p className="truncate font-600">{i.name}</p>
+                  <p className="text-xs text-ink/50">{i.category}{i.sku ? ` · ${i.sku}` : ''}</p>
+                </div>
+              )}
               <div className="flex shrink-0 items-center gap-3">
                 <div className="text-right">
                   <p className={`font-600 ${i.lowStock ? 'text-bad' : ''}`}>{i.quantityOnHand} {i.unit}</p>
                   {i.lowStock && <p className="text-xs text-bad">low stock</p>}
                 </div>
-                <button className="btn-ghost" onClick={() => setAdjusting(i)}>Adjust</button>
+                {canManage && <button className="btn-ghost" onClick={() => setAdjusting(i)}>Adjust</button>}
               </div>
             </div>
           ))}

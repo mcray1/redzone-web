@@ -771,9 +771,10 @@ export async function fetchSubscriberReport(): Promise<SubscriberReportRow[]> {
 export interface ExpensesResult {
   rows: Expense[]; totalCents: number; byCategory: Record<string, number>; count: number;
 }
-export function useExpenses(params: { from?: string; to?: string; category?: string }) {
+export function useExpenses(params: { from?: string; to?: string; category?: string }, opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['expenses', params],
+    enabled: opts?.enabled ?? true,
     queryFn: async () => (await api.get<ExpensesResult>('/expenses', { params })).data,
   });
 }
@@ -781,9 +782,10 @@ export function useExpenses(params: { from?: string; to?: string; category?: str
 export interface Pnl {
   incomeCents: number; expenseCents: number; netCents: number; byCategory: Record<string, number>;
 }
-export function usePnl(from: string, to: string) {
+export function usePnl(from: string, to: string, opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['pnl', from, to],
+    enabled: opts?.enabled ?? true,
     queryFn: async () => (await api.get<Pnl>('/expenses/pnl', { params: { from, to } })).data,
   });
 }

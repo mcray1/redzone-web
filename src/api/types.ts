@@ -4,12 +4,25 @@ export type Role = 'OWNER' | 'ADMIN' | 'MANAGER' | 'COLLECTOR' | 'TECHNICIAN' | 
 // and is what the token/login returns for owners and admins.
 export type PermissionKey =
   | 'subscribers.add'
+  | 'subscribers.edit'
+  | 'subscribers.status'
+  | 'subscribers.login'
   | 'payments.void'
+  | 'billing.prorate'
   | 'remittances.verify'
-  | 'reports.view'
   | 'extensions.approve'
   | 'expenses.approve'
-  | 'coverage.assign';
+  | 'plans.manage'
+  | 'jobs.manage'
+  | 'tickets.manage'
+  | 'inventory.view'
+  | 'inventory.manage'
+  | 'network.view'
+  | 'routers.manage'
+  | 'coverage.assign'
+  | 'reports.view'
+  | 'payroll.view'
+  | 'audit.view';
 
 export interface User {
   id: string;
@@ -31,6 +44,7 @@ export interface CustomRole {
 export interface PermissionCatalogItem {
   key: PermissionKey;
   label: string;
+  group?: string;
 }
 
 export type SubscriberStatus =

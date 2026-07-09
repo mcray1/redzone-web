@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 import { LocationSelect } from '../../components/LocationSelect';
@@ -12,6 +13,7 @@ export default function SubscriberDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const { data: s, isLoading } = useSubscriber(id);
+  const { hasPerm } = useAuth();
   const [payOpen, setPayOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -29,7 +31,9 @@ export default function SubscriberDetail() {
             <p className="text-sm text-ink/50">{s.accountNo}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="text-sm font-600 text-signal-600" onClick={() => setEditOpen(true)}>Edit</button>
+            {hasPerm('subscribers.edit') && (
+              <button className="text-sm font-600 text-signal-600" onClick={() => setEditOpen(true)}>Edit</button>
+            )}
             {s.billingExempt && <span className="pill bg-ink/10 text-ink/60">Free</span>}
             <StatusPill status={s.status} />
           </div>
@@ -57,13 +61,15 @@ export default function SubscriberDetail() {
           ) : null;
         })()}
 
-        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-          <StatusControl id={s.id} current={s.status} />
-        </div>
+        {hasPerm('subscribers.status') && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+            <StatusControl id={s.id} current={s.status} />
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <button className="btn-primary" onClick={() => setPayOpen(true)}>Record payment</button>
-          <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />
+          {hasPerm('billing.prorate') && <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />}
         </div>
       </div>
 
@@ -83,7 +89,7 @@ export default function SubscriberDetail() {
                 <div className="flex shrink-0 items-center gap-3">
                   {p.proofUrl && <ProofLink path={p.proofUrl} label="Proof" />}
                   <span className="font-mono text-xs text-ink/40">{p.receiptNo}</span>
-                  {!p.voided && <VoidButton paymentId={p.id} subscriberId={s.id} />}
+                  {!p.voided && hasPerm('payments.void') && <VoidButton paymentId={p.id} subscriberId={s.id} />}
                 </div>
               </li>
             ))}
@@ -105,9 +111,11 @@ export default function SubscriberDetail() {
             </p>
           </div>
         </div>
-        <button className="btn-ghost mt-3 w-full md:w-auto" onClick={() => setLoginOpen(true)}>
-          {s.loginUser ? 'Reset login' : 'Create login'}
-        </button>
+        {hasPerm('subscribers.login') && (
+          <button className="btn-ghost mt-3 w-full md:w-auto" onClick={() => setLoginOpen(true)}>
+            {s.loginUser ? 'Reset login' : 'Create login'}
+          </button>
+        )}
       </div>
 
       {editOpen && <EditSubscriberModal sub={s} onClose={() => setEditOpen(false)} />}

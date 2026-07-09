@@ -3,12 +3,23 @@ import { AxiosError } from 'axios';
 import {
   useCustomRoles, usePermissionCatalog, useSaveCustomRole, useDeleteCustomRole,
 } from '../../hooks/queries';
-import type { CustomRole, PermissionKey } from '../../api/types';
+import type { CustomRole, PermissionKey, PermissionCatalogItem } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
 
 function apiError(err: unknown, fallback: string) {
   const e = err as AxiosError<{ error?: string }>;
   return e?.response?.data?.error || fallback;
+}
+
+// Group catalog items by their `group`, preserving first-seen order.
+function groupCatalog(items: PermissionCatalogItem[] | undefined): Array<[string, PermissionCatalogItem[]]> {
+  const map = new Map<string, PermissionCatalogItem[]>();
+  for (const it of items ?? []) {
+    const g = it.group || 'Other';
+    if (!map.has(g)) map.set(g, []);
+    map.get(g)!.push(it);
+  }
+  return [...map.entries()];
 }
 
 export default function Roles() {
@@ -99,13 +110,20 @@ function RoleModal({ role, onClose }: { role: CustomRole | null; onClose: () => 
 
           <div>
             <label className="label">What this role can do</label>
-            <div className="mt-1 space-y-1.5">
-              {catalog?.map((c) => (
-                <label key={c.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-sm hover:bg-line/30">
-                  <input type="checkbox" className="h-4 w-4 accent-signal-600"
-                    checked={perms.includes(c.key)} onChange={() => toggle(c.key)} />
-                  <span className="text-ink/80">{c.label}</span>
-                </label>
+            <div className="mt-1 max-h-[45vh] space-y-3 overflow-y-auto pr-1">
+              {groupCatalog(catalog).map(([group, items]) => (
+                <div key={group}>
+                  <p className="px-1 pb-1 text-[10px] font-700 uppercase tracking-wider text-ink/35">{group}</p>
+                  <div className="space-y-1.5">
+                    {items.map((c) => (
+                      <label key={c.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-sm hover:bg-line/30">
+                        <input type="checkbox" className="h-4 w-4 accent-signal-600"
+                          checked={perms.includes(c.key)} onChange={() => toggle(c.key)} />
+                        <span className="text-ink/80">{c.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             <p className="mt-2 text-xs text-ink/40">

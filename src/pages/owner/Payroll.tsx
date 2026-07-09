@@ -3,7 +3,15 @@ import { SalaryPinGate } from '../../components/SalaryPinGate';
 import { useStaffSalaries, useSetStaffSalary, useAdvancesQueue, useDecideAdvance,
   usePayrollRuns, usePayrollRun, useCreatePayrollRun, useUpdatePayslip, useFinalizePayroll } from '../../hooks/queries';
 import { peso, type StaffSalary, type StaffSalaryRow, type SalaryAdvance, type SalaryType } from '../../api/types';
+import { useAuth } from '../../context/AuthContext';
 import { Spinner } from '../../components/ui';
+
+// Running payroll and editing salaries is never delegated — owner/admin only.
+// A manager may hold payroll.view (see the numbers) but not act on them.
+function useCanManagePayroll() {
+  const { user } = useAuth();
+  return (user?.roles ?? [user?.role]).some((r) => r === 'OWNER' || r === 'ADMIN');
+}
 
 export default function Payroll() {
   return (
@@ -24,6 +32,7 @@ function salaryLabel(s: StaffSalary | null) {
 }
 
 function PayrollContent({ pin }: { pin: string }) {
+  const canManage = useCanManagePayroll();
   const { data: staff, isLoading } = useStaffSalaries(pin);
   const { data: pending } = useAdvancesQueue(pin, 'PENDING');
   const [editing, setEditing] = useState<StaffSalaryRow | null>(null);
@@ -36,7 +45,7 @@ function PayrollContent({ pin }: { pin: string }) {
           <p className="mt-2 text-sm text-ink/40">No pending requests.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
-            {pending.map((a) => <AdvanceRow key={a.id} adv={a} />)}
+            {pending.map((a) => <AdvanceRow key={a.id} adv={a} canManage={canManage} />)}
           </ul>
         )}
       </div>
@@ -58,21 +67,21 @@ function PayrollContent({ pin }: { pin: string }) {
                     {s.approvedAdvanceTotal > 0 && <> · advanced {peso(s.approvedAdvanceTotal)}</>}
                   </p>
                 </div>
-                <button className="btn-ghost shrink-0" onClick={() => setEditing(s)}>Set salary</button>
+                {canManage && <button className="btn-ghost shrink-0" onClick={() => setEditing(s)}>Set salary</button>}
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      <PayrollRuns pin={pin} />
+      <PayrollRuns pin={pin} canManage={canManage} />
 
       {editing && <SalaryModal pin={pin} row={editing} onClose={() => setEditing(null)} />}
     </div>
   );
 }
 
-function PayrollRuns({ pin }: { pin: string }) {
+function PayrollRuns({ pin, canManage }: { pin: string; canManage: boolean }) {
   const { data: runs } = usePayrollRuns(pin);
   const create = useCreatePayrollRun(pin);
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
@@ -93,12 +102,14 @@ function PayrollRuns({ pin }: { pin: string }) {
   return (
     <div className="card p-5">
       <h2 className="font-display font-600">Payroll runs</h2>
-      <div className="mt-3 flex gap-2">
-        <input className="input" type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
-        <button className="btn-primary shrink-0" disabled={create.isPending} onClick={generate}>
-          {create.isPending ? '…' : 'Generate'}
-        </button>
-      </div>
+      {canManage && (
+        <div className="mt-3 flex gap-2">
+          <input className="input" type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          <button className="btn-primary shrink-0" disabled={create.isPending} onClick={generate}>
+            {create.isPending ? '…' : 'Generate'}
+          </button>
+        </div>
+      )}
       {err && <p className="mt-2 text-sm text-bad">{err}</p>}
       {runs && runs.length > 0 && (
         <ul className="mt-3 divide-y divide-line">
@@ -115,12 +126,12 @@ function PayrollRuns({ pin }: { pin: string }) {
           ))}
         </ul>
       )}
-      {openId && <RunDetailModal pin={pin} id={openId} onClose={() => setOpenId(null)} />}
+      {openId && <RunDetailModal pin={pin} id={openId} canManage={canManage} onClose={() => setOpenId(null)} />}
     </div>
   );
 }
 
-function RunDetailModal({ pin, id, onClose }: { pin: string; id: string; onClose: () => void }) {
+function RunDetailModal({ pin, id, canManage, onClose }: { pin: string; id: string; canManage: boolean; onClose: () => void }) {
   const { data: run, isLoading } = usePayrollRun(pin, id);
   const updateSlip = useUpdatePayslip(pin);
   const finalize = useFinalizePayroll(pin);
@@ -149,7 +160,7 @@ function RunDetailModal({ pin, id, onClose }: { pin: string; id: string; onClose
                     </div>
                     <span className="shrink-0 font-700">{peso(p.netCents)}</span>
                   </div>
-                  {p.type === 'DAILY' && run.status === 'DRAFT' && (
+                  {p.type === 'DAILY' && run.status === 'DRAFT' && canManage && (
                     <div className="mt-1.5 flex items-center gap-2 text-xs text-ink/60">
                       <span>Days worked:</span>
                       <input className="input w-20 py-1" type="number" min={0} max={31} defaultValue={p.daysWorked}
@@ -167,14 +178,16 @@ function RunDetailModal({ pin, id, onClose }: { pin: string; id: string; onClose
               <span className="font-display text-lg font-700">{peso(run.totals.net)}</span>
             </div>
             {run.status === 'DRAFT' ? (
-              <button className="btn-primary mt-4 w-full" disabled={finalize.isPending}
-                onClick={() => {
-                  if (window.confirm('Finalize this payroll? Approved advances will be deducted and the run locked.')) {
-                    finalize.mutate(run.id, { onSuccess: onClose });
-                  }
-                }}>
-                {finalize.isPending ? 'Finalizing…' : 'Finalize payroll'}
-              </button>
+              canManage && (
+                <button className="btn-primary mt-4 w-full" disabled={finalize.isPending}
+                  onClick={() => {
+                    if (window.confirm('Finalize this payroll? Approved advances will be deducted and the run locked.')) {
+                      finalize.mutate(run.id, { onSuccess: onClose });
+                    }
+                  }}>
+                  {finalize.isPending ? 'Finalizing…' : 'Finalize payroll'}
+                </button>
+              )
             ) : (
               <p className="mt-4 text-center text-sm text-good">Finalized — advances deducted.</p>
             )}
@@ -185,7 +198,7 @@ function RunDetailModal({ pin, id, onClose }: { pin: string; id: string; onClose
   );
 }
 
-function AdvanceRow({ adv }: { adv: SalaryAdvance }) {
+function AdvanceRow({ adv, canManage }: { adv: SalaryAdvance; canManage: boolean }) {
   const decide = useDecideAdvance();
   return (
     <li className="flex items-center justify-between gap-3 py-3">
@@ -193,12 +206,14 @@ function AdvanceRow({ adv }: { adv: SalaryAdvance }) {
         <p className="truncate font-600">{adv.user?.name} — {peso(adv.amountCents)}</p>
         <p className="text-xs text-ink/50">{adv.user?.role}{adv.reason ? ` · ${adv.reason}` : ''}</p>
       </div>
-      <div className="flex shrink-0 gap-2">
-        <button className="btn-ghost text-bad" disabled={decide.isPending}
-          onClick={() => decide.mutate({ id: adv.id, status: 'REJECTED' })}>Reject</button>
-        <button className="btn-primary" disabled={decide.isPending}
-          onClick={() => decide.mutate({ id: adv.id, status: 'APPROVED' })}>Approve</button>
-      </div>
+      {canManage && (
+        <div className="flex shrink-0 gap-2">
+          <button className="btn-ghost text-bad" disabled={decide.isPending}
+            onClick={() => decide.mutate({ id: adv.id, status: 'REJECTED' })}>Reject</button>
+          <button className="btn-primary" disabled={decide.isPending}
+            onClick={() => decide.mutate({ id: adv.id, status: 'APPROVED' })}>Approve</button>
+        </div>
+      )}
     </li>
   );
 }

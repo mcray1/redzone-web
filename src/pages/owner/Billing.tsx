@@ -7,12 +7,12 @@ import { peso } from '../../api/types';
 import { Spinner, StatusPill, EmptyState } from '../../components/ui';
 
 export default function Billing() {
-  const { data, isLoading } = useOwnerStats();
-  const { user } = useAuth();
+  const { user, hasPerm } = useAuth();
+  const canViewReports = hasPerm('reports.view');
+  const { data, isLoading } = useOwnerStats({ enabled: canViewReports });
   const nav = useNavigate();
-  if (isLoading || !data) return <Spinner />;
 
-  const owing = data.owing;
+  const owing = data?.owing ?? [];
 
   return (
     <div className="space-y-5">
@@ -21,40 +21,46 @@ export default function Billing() {
         <p className="text-sm text-ink/50">Accounts with outstanding balances.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="card px-5 py-4">
-          <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Total outstanding</p>
-          <p className="mt-1.5 font-display text-2xl font-700 text-bad">{peso(data.outstanding)}</p>
+      {canViewReports && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="card px-5 py-4">
+            <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Total outstanding</p>
+            <p className="mt-1.5 font-display text-2xl font-700 text-bad">{peso(data?.outstanding ?? 0)}</p>
+          </div>
+          <div className="card px-5 py-4">
+            <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Accounts owing</p>
+            <p className="mt-1.5 font-display text-2xl font-700">{data?.owingCount ?? 0}</p>
+          </div>
         </div>
-        <div className="card px-5 py-4">
-          <p className="text-xs font-600 uppercase tracking-wide text-ink/50">Accounts owing</p>
-          <p className="mt-1.5 font-display text-2xl font-700">{data.owingCount}</p>
-        </div>
-      </div>
+      )}
 
       {user?.role === 'OWNER' && <RunBillingPanel />}
 
-      <ExtensionsPanel />
-      <RemittancesPanel />
+      {hasPerm('extensions.approve') && <ExtensionsPanel />}
+      {hasPerm('remittances.verify') && <RemittancesPanel />}
 
-      {owing.length === 0 ? (
-        <EmptyState title="Everyone's paid up" hint="No outstanding balances right now." />
-      ) : (
-        <div className="card divide-y divide-line overflow-hidden">
-          {owing.map((s) => (
-            <button key={s.id} onClick={() => nav(`/owner/subscribers/${s.id}`)}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left hover:bg-paper">
-              <div className="min-w-0">
-                <p className="truncate font-600">{s.fullName}</p>
-                <p className="text-xs text-ink/50">{s.accountNo} · due day {s.dueDay}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="font-600 text-bad">{peso(s.balanceCents)}</span>
-                <StatusPill status={s.status} />
-              </div>
-            </button>
-          ))}
-        </div>
+      {canViewReports && (
+        isLoading ? (
+          <Spinner />
+        ) : owing.length === 0 ? (
+          <EmptyState title="Everyone's paid up" hint="No outstanding balances right now." />
+        ) : (
+          <div className="card divide-y divide-line overflow-hidden">
+            {owing.map((s) => (
+              <button key={s.id} onClick={() => nav(`/owner/subscribers/${s.id}`)}
+                className="flex w-full items-center justify-between px-4 py-3.5 text-left hover:bg-paper">
+                <div className="min-w-0">
+                  <p className="truncate font-600">{s.fullName}</p>
+                  <p className="text-xs text-ink/50">{s.accountNo} · due day {s.dueDay}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-600 text-bad">{peso(s.balanceCents)}</span>
+                  <StatusPill status={s.status} />
+                </div>
+              </button>
+            ))}
+          </div>
+        )
       )}
     </div>
   );
