@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { usePublicPlans, useSubmitRegistration } from '../hooks/queries';
+import { useSubmitRegistration } from '../hooks/queries';
 import { Logo } from '../components/ui';
 import { LocationSelect } from '../components/LocationSelect';
-import { peso } from '../api/types';
 
 function apiError(err: unknown, fallback: string) {
   const e = err as AxiosError<{ error?: string }>;
@@ -25,7 +24,6 @@ function requestGps(): Promise<{ lat: number; lng: number } | null> {
 }
 
 export default function Register() {
-  const { data: plans } = usePublicPlans();
   const submit = useSubmitRegistration();
 
   const [fullName, setFullName] = useState('');
@@ -35,7 +33,6 @@ export default function Register() {
   const [barangay, setBarangay] = useState('');
   const [sitio, setSitio] = useState('');
   const [address, setAddress] = useState('');
-  const [servicePlanId, setServicePlanId] = useState('');
   const [estimatedClients, setEstimatedClients] = useState('');
   const [notes, setNotes] = useState('');
   const [type, setType] = useState<'PLAN' | 'VENDO'>('PLAN');
@@ -81,7 +78,6 @@ export default function Register() {
         address: address || undefined,
         gpsLat: coords?.lat,
         gpsLng: coords?.lng,
-        servicePlanId: isVendo ? undefined : (servicePlanId || undefined),
         estimatedClients: isVendo && estimatedClients ? Number(estimatedClients) : undefined,
         notes: notes || undefined,
       });
@@ -178,24 +174,6 @@ export default function Register() {
             </div>
             <p className="text-xs text-ink/40">Pinning helps our team find you faster. Please allow location access.</p>
           </div>
-
-          {!isVendo && plans && plans.length > 0 && (
-            <div className="card space-y-3 p-5">
-              <p className="font-display font-600">Choose a plan <span className="font-400 text-ink/40">(optional)</span></p>
-              <div className="grid gap-2">
-                {plans.map((p) => (
-                  <button type="button" key={p.id} onClick={() => setServicePlanId(servicePlanId === p.id ? '' : p.id)}
-                    className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left ${servicePlanId === p.id ? 'border-signal-600 bg-signal/5' : 'border-line'}`}>
-                    <div>
-                      <p className="font-600">{p.name}</p>
-                      <p className="text-xs text-ink/50">{Math.round(p.downloadKbps / 1024)} Mbps</p>
-                    </div>
-                    <span className="font-display font-700 text-signal-600">{peso(p.priceCents)}<span className="text-xs font-400 text-ink/40">/mo</span></span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="card p-5">
             <label className="label">Anything else? (optional)</label>
