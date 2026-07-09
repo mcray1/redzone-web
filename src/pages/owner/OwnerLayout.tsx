@@ -32,6 +32,7 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
     label: 'Team',
     items: [
       { to: '/owner/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 .01M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
+      { to: '/owner/audit', label: 'Activity log', icon: 'M12 6v6l4 2M12 22a10 10 0 100-20 10 10 0 000 20' },
     ],
   },
 ];

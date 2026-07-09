@@ -59,6 +59,7 @@ export interface Payment {
   proofUrl?: string | null;
 }
 
+export type ExpenseStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export interface Expense {
   id: string;
   date: string;
@@ -69,7 +70,20 @@ export interface Expense {
   vendor?: string | null;
   reference?: string | null;
   receiptPath?: string | null;
+  status?: ExpenseStatus;
   createdAt: string;
+  submittedBy?: string;
+  submittedRole?: Role | null;
+}
+
+export interface AuditEntry {
+  id: string;
+  action: string;
+  target?: string | null;
+  meta?: unknown;
+  ip?: string | null;
+  createdAt: string;
+  userName: string;
 }
 
 export const peso = (cents: number) =>

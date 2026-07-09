@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useExpenses, usePnl, useSaveExpense, useVoidExpense } from '../../hooks/queries';
+import { useExpenses, usePnl, useSaveExpense, useVoidExpense, usePendingExpenses, useDecideExpense } from '../../hooks/queries';
 import { peso, type Expense } from '../../api/types';
 import { toCsv, downloadCsv, todayStamp, type CsvColumn } from '../../lib/csv';
 import { Spinner } from '../../components/ui';
@@ -71,6 +71,8 @@ export default function Expenses() {
         </div>
       </div>
 
+      <PendingExpenses />
+
       {/* Filters */}
       <div className="card p-4">
         <div className="flex flex-wrap items-end gap-2">
@@ -138,6 +140,36 @@ export default function Expenses() {
       {(adding || editing) && (
         <ExpenseModal expense={editing} onClose={() => { setAdding(false); setEditing(null); }} />
       )}
+    </div>
+  );
+}
+
+function PendingExpenses() {
+  const { data } = usePendingExpenses();
+  const decide = useDecideExpense();
+  if (!data || data.length === 0) return null;
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Expense requests to approve</h2>
+      <ul className="mt-3 divide-y divide-line">
+        {data.map((e) => (
+          <li key={e.id} className="flex items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <p className="truncate font-600">{e.description} — {peso(e.amountCents)}</p>
+              <p className="text-xs text-ink/50">
+                {e.submittedBy || 'Staff'} · {e.category} · {new Date(e.date).toLocaleDateString('en-PH')}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button className="btn-ghost text-bad" disabled={decide.isPending}
+                onClick={() => decide.mutate({ id: e.id, status: 'REJECTED' })}>Reject</button>
+              <button className="btn-primary" disabled={decide.isPending}
+                onClick={() => decide.mutate({ id: e.id, status: 'APPROVED' })}>Approve</button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import Installations from './pages/owner/Installations';
 import Payroll from './pages/owner/Payroll';
 import Reports from './pages/owner/Reports';
 import Expenses from './pages/owner/Expenses';
+import Audit from './pages/owner/Audit';
 import Portal from './pages/portal/Portal';
 
 function landingFor(role: string) {
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="payroll" element={<Payroll />} />
           <Route path="reports" element={<Reports />} />
           <Route path="expenses" element={<Expenses />} />
+          <Route path="audit" element={<Audit />} />
         </Route>
 
         <Route path="/collector" element={<Protected roles={['COLLECTOR']}><Collector /></Protected>} />

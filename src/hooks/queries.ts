@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -726,5 +726,55 @@ export function useVoidExpense() {
       qc.invalidateQueries({ queryKey: ['expenses'] });
       qc.invalidateQueries({ queryKey: ['pnl'] });
     },
+  });
+}
+
+// Staff (collector/technician) submit an expense request (starts PENDING).
+export function useSubmitExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { date: string; category: string; description: string; amountCents: number; method?: string; vendor?: string }) =>
+      (await api.post('/expenses', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-expenses'] }),
+  });
+}
+export function useMyExpenses() {
+  return useQuery({
+    queryKey: ['my-expenses'],
+    queryFn: async () => (await api.get<Expense[]>('/expenses/mine')).data,
+  });
+}
+export function usePendingExpenses() {
+  return useQuery({
+    queryKey: ['pending-expenses'],
+    queryFn: async () => (await api.get<Expense[]>('/expenses/pending')).data,
+  });
+}
+export function useDecideExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; status: 'APPROVED' | 'REJECTED' }) =>
+      (await api.post(`/expenses/${p.id}/decision`, { status: p.status })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pending-expenses'] });
+      qc.invalidateQueries({ queryKey: ['expenses'] });
+      qc.invalidateQueries({ queryKey: ['pnl'] });
+    },
+  });
+}
+
+// Collector's top-5 highest-balance subscribers (scoped) — no total counts.
+export function useCollectorPriority() {
+  return useQuery({
+    queryKey: ['collector-priority'],
+    queryFn: async () => (await api.get<Array<{ id: string; fullName: string; accountNo: string; balanceCents: number; barangay: string | null; dueDay: number }>>('/collector/priority')).data,
+  });
+}
+
+// Audit log (owner/admin).
+export function useAuditLog(limit = 100) {
+  return useQuery({
+    queryKey: ['audit', limit],
+    queryFn: async () => (await api.get<AuditEntry[]>('/stats/audit', { params: { limit } })).data,
   });
 }

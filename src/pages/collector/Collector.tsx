@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberStatus, useRemittancePending, useSubmitRemittance, useMyRemittances } from '../../hooks/queries';
+import { useSubscribers, useRecordPayment, useCollectorToday, useSetSubscriberStatus, useRemittancePending, useSubmitRemittance, useMyRemittances, useCollectorPriority } from '../../hooks/queries';
 import { peso, type Subscriber } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { MySalarySection } from '../../components/MySalarySection';
+import { StaffExpenses } from '../../components/StaffExpenses';
 
 export default function Collector() {
   const { user, logout } = useAuth();
-  const [tab, setTab] = useState<'collect' | 'today' | 'salary'>('collect');
+  const [tab, setTab] = useState<'collect' | 'today' | 'salary' | 'expenses'>('collect');
   const [pwOpen, setPwOpen] = useState(false);
 
   return (
@@ -28,7 +29,7 @@ export default function Collector() {
       </header>
 
       <main className="mx-auto max-w-md px-4 py-5">
-        {tab === 'collect' ? <CollectTab /> : tab === 'today' ? <TodayTab /> : <MySalarySection />}
+        {tab === 'collect' ? <CollectTab /> : tab === 'today' ? <TodayTab /> : tab === 'salary' ? <MySalarySection /> : <StaffExpenses />}
       </main>
 
       {/* Bottom nav */}
@@ -47,6 +48,11 @@ export default function Collector() {
           className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-600 ${tab === 'salary' ? 'text-signal-600' : 'text-ink/50'}`}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeLinecap="round" strokeLinejoin="round"/></svg>
           Salary
+        </button>
+        <button onClick={() => setTab('expenses')}
+          className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-600 ${tab === 'expenses' ? 'text-signal-600' : 'text-ink/50'}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5"><path d="M3 10h18M7 15h4M3 6h18v12H3z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Expenses
         </button>
       </nav>
     </div>
@@ -85,12 +91,37 @@ function CollectTab() {
         </div>
       ))}
 
-      {!q && (
-        <div className="card px-6 py-10 text-center">
-          <SignalMark className="mx-auto h-8 w-8 text-ink/20" />
-          <p className="mt-2 text-sm text-ink/50">Search for a customer to record a payment.</p>
-        </div>
-      )}
+      {!q && <PriorityAccounts onPick={setQ} />}
+    </div>
+  );
+}
+
+function PriorityAccounts({ onPick }: { onPick: (accountNo: string) => void }) {
+  const { data, isLoading } = useCollectorPriority();
+  if (isLoading) return <Spinner />;
+  if (!data || data.length === 0) {
+    return (
+      <div className="card px-6 py-10 text-center">
+        <SignalMark className="mx-auto h-8 w-8 text-ink/20" />
+        <p className="mt-2 text-sm text-ink/50">Nothing outstanding in your area. Search to record a payment.</p>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <p className="mb-2 text-xs font-600 uppercase tracking-wide text-ink/40">Priority — highest balances</p>
+      <div className="card divide-y divide-line overflow-hidden">
+        {data.map((s) => (
+          <button key={s.id} onClick={() => onPick(s.accountNo)}
+            className="flex w-full items-center justify-between px-4 py-3.5 text-left active:bg-paper">
+            <div className="min-w-0">
+              <p className="truncate font-600">{s.fullName}</p>
+              <p className="text-xs text-ink/50">{s.accountNo}{s.barangay ? ` · ${s.barangay}` : ''} · due day {s.dueDay}</p>
+            </div>
+            <span className="shrink-0 font-600 text-bad">{peso(s.balanceCents)}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

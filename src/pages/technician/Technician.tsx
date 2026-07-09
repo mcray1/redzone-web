@@ -7,12 +7,14 @@ import { Logo, Spinner, SignalMark, JobStatusPill } from '../../components/ui';
 import { AttendanceCard } from '../../components/AttendanceCard';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { MySalarySection } from '../../components/MySalarySection';
+import { StaffExpenses } from '../../components/StaffExpenses';
 
 export default function Technician() {
   const { user, logout } = useAuth();
   const [openJob, setOpenJob] = useState<Job | null>(null);
   const [pwOpen, setPwOpen] = useState(false);
   const [showSalary, setShowSalary] = useState(false);
+  const [showExpenses, setShowExpenses] = useState(false);
   const { data: jobs, isLoading } = useJobs();
 
   const active = (jobs ?? []).filter((j) => j.status === 'SCHEDULED' || j.status === 'IN_PROGRESS');
@@ -44,6 +46,14 @@ export default function Technician() {
             <span className="text-ink/40">{showSalary ? '▲' : '▼'}</span>
           </button>
           {showSalary && <div className="mt-3"><MySalarySection /></div>}
+        </section>
+
+        <section>
+          <button className="btn-ghost w-full justify-between" onClick={() => setShowExpenses((v) => !v)}>
+            <span className="font-600">Submit an expense</span>
+            <span className="text-ink/40">{showExpenses ? '▲' : '▼'}</span>
+          </button>
+          {showExpenses && <div className="mt-3"><StaffExpenses /></div>}
         </section>
 
         <section>
