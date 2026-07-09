@@ -482,7 +482,7 @@ export interface BillingRunResult {
 export interface Attention {
   pendingAdvances: number; pendingRemittances: number;
   openTickets: number; scheduledJobs: number; overdueInvoices: number;
-  pendingExtensions: number; pendingExpenses: number; pendingRegistrations: number;
+  pendingExtensions: number; pendingExpenses: number; pendingRegistrations: number; pendingResets: number;
 }
 export function useAttention() {
   return useQuery({
@@ -1034,6 +1034,45 @@ export function useSubmitRegistration() {
       sitio?: string; barangay?: string; municipality?: string;
       estimatedClients?: number; notes?: string; gpsLat?: number; gpsLng?: number;
     }) => (await api.post('/public/register', p)).data,
+  });
+}
+
+// --- Password reset ---
+// Public: ask for a reset (always resolves the same way).
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: async (email: string) => (await api.post('/public/forgot-password', { email })).data,
+  });
+}
+// Public: complete a reset with an emailed token.
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: async (p: { token: string; password: string }) => (await api.post('/public/reset-password', p)).data,
+  });
+}
+
+export interface ResetRequest {
+  id: string; email: string; createdAt: string; userName: string; role: string; subscriberId: string | null; isStaff: boolean;
+}
+// Staff queue.
+export function usePasswordResets() {
+  return useQuery({
+    queryKey: ['password-resets'],
+    queryFn: async () => (await api.get<ResetRequest[]>('/password-resets')).data,
+  });
+}
+export function useSetPasswordReset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; password: string }) => (await api.post(`/password-resets/${p.id}/set`, { password: p.password })).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['password-resets'] }); qc.invalidateQueries({ queryKey: ['attention'] }); },
+  });
+}
+export function useDismissPasswordReset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/password-resets/${id}/dismiss`, {})).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['password-resets'] }); qc.invalidateQueries({ queryKey: ['attention'] }); },
   });
 }
 

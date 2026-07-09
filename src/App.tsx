@@ -24,6 +24,9 @@ import Devices from './pages/owner/Devices';
 import Portal from './pages/portal/Portal';
 import Register from './pages/Register';
 import Registrations from './pages/owner/Registrations';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import PasswordResets from './pages/owner/PasswordResets';
 
 function landingFor(role: string) {
   if (role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER') return '/owner';
@@ -54,6 +57,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot" element={<ForgotPassword />} />
+        <Route path="/reset" element={<ResetPassword />} />
         <Route path="/" element={<Home />} />
 
         <Route path="/owner" element={<Protected roles={['OWNER', 'ADMIN', 'MANAGER']}><OwnerLayout /></Protected>}>
@@ -61,6 +66,7 @@ export default function App() {
           <Route path="subscribers" element={<Subscribers />} />
           <Route path="subscribers/:id" element={<SubscriberDetail />} />
           <Route path="registrations" element={<Registrations />} />
+          <Route path="password-resets" element={<PasswordResets />} />
           <Route path="billing" element={<Billing />} />
           <Route path="plans" element={<Plans />} />
           <Route path="tickets" element={<Tickets />} />

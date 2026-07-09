@@ -63,6 +63,9 @@ export default function Login() {
             <button className="btn-primary w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
+            <div className="text-right">
+              <Link to="/forgot" className="text-xs font-600 text-white/50">Forgot password?</Link>
+            </div>
           </form>
 
           {/* Prospective clients — public sign-up form */}
