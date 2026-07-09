@@ -79,9 +79,15 @@ function NodeCard({ node }: { node: NetworkNode }) {
       {open && node.sessions && (
         <ul className="mt-2 max-h-64 divide-y divide-line overflow-y-auto text-sm">
           {node.sessions.map((s, i) => (
-            <li key={`${s.name}-${i}`} className="flex items-center justify-between py-1.5">
-              <span className="truncate font-600">{s.name}</span>
-              <span className="text-xs text-ink/50">{s.address || ''}{s.uptime ? ` · ${s.uptime}` : ''}</span>
+            <li key={`${s.name}-${i}`} className="flex items-center justify-between gap-3 py-1.5">
+              <div className="min-w-0">
+                <p className="truncate font-600">{s.subscriberName || s.name}</p>
+                <p className="truncate text-xs text-ink/50">
+                  {s.subscriberName ? `${s.name}` : 'not linked to a subscriber'}
+                  {s.accountNo ? ` · ${s.accountNo}` : ''}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs text-ink/50">{s.address || ''}{s.uptime ? ` · ${s.uptime}` : ''}</span>
             </li>
           ))}
         </ul>

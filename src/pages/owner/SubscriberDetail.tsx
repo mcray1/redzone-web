@@ -44,6 +44,7 @@ export default function SubscriberDetail() {
           <Field label="Sitio / Purok" value={s.sitio ?? '—'} />
           <Field label="Barangay" value={s.barangay ?? '—'} />
           <Field label="Municipality" value={s.municipality ?? '—'} />
+          <Field label="PPPoE username" value={s.pppoeUsername ?? '—'} />
         </div>
 
         {(() => {
@@ -191,6 +192,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 interface EditVals {
   fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
   municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number; lateFeeEnabled?: boolean;
+  pppoeUsername?: string;
 }
 
 function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
@@ -209,6 +211,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       servicePlanId: sub.servicePlan?.id ?? '',
       dueDay: sub.dueDay,
       lateFeeEnabled: sub.lateFeeEnabled ?? false,
+      pppoeUsername: sub.pppoeUsername ?? '',
     },
   });
   const municipality = watch('municipality') || '';
@@ -230,6 +233,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           servicePlanId: v.servicePlanId,
           dueDay: v.dueDay ? Number(v.dueDay) : undefined,
           lateFeeEnabled: !!v.lateFeeEnabled,
+          pppoeUsername: v.pppoeUsername,
         },
       });
       onClose();
@@ -287,6 +291,10 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
                 <option key={p.id} value={p.id}>{p.name} ({peso(p.priceCents)}/mo)</option>
               ))}
             </select>
+          </div>
+          <div className="col-span-2">
+            <label className="label">PPPoE username (links to the router account)</label>
+            <input className="input" {...register('pppoeUsername')} placeholder="e.g. juan_delacruz" />
           </div>
           <label className="col-span-2 flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4" {...register('lateFeeEnabled')} />

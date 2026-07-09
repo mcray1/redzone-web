@@ -75,7 +75,7 @@ export default function Subscribers() {
 interface AddVals {
   accountNo: string; fullName: string; email?: string; phone?: string;
   address?: string; sitio?: string; barangay?: string; municipality?: string; dueDay?: number;
-  servicePlanId?: string;
+  servicePlanId?: string; pppoeUsername?: string;
 }
 
 function AddSubscriberModal({ onClose }: { onClose: () => void }) {
@@ -141,6 +141,10 @@ function AddSubscriberModal({ onClose }: { onClose: () => void }) {
               onMunicipality={(v) => setValue('municipality', v)}
               onBarangay={(v) => setValue('barangay', v)}
             />
+          </div>
+          <div className="col-span-2">
+            <label className="label">PPPoE username (optional)</label>
+            <input className="input" {...register('pppoeUsername')} placeholder="links to the router account" />
           </div>
           <div className="col-span-2">
             <label className="label">Service plan</label>
