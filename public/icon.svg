@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Full-bleed background for maskable icons -->
+  <rect width="512" height="512" fill="#0b1f3a"/>
+  <!-- Ascending signal bars, centered within the maskable safe zone -->
+  <g>
+    <rect x="161" y="280" width="34" height="70"  rx="10" fill="#ffffff" opacity="0.45"/>
+    <rect x="213" y="240" width="34" height="110" rx="10" fill="#ffffff" opacity="0.65"/>
+    <rect x="265" y="200" width="34" height="150" rx="10" fill="#ffffff" opacity="0.85"/>
+    <rect x="317" y="160" width="34" height="190" rx="10" fill="#f5a623"/>
+  </g>
+</svg>
