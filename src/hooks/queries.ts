@@ -942,6 +942,15 @@ export function useNetwork() {
   });
 }
 
+// Setup details for wiring up a new reporting device.
+export function useNetworkSetup(enabled = true) {
+  return useQuery({
+    queryKey: ['network-setup'],
+    enabled,
+    queryFn: async () => (await api.get<{ configured: boolean; reportUrl: string; token: string }>('/network/setup')).data,
+  });
+}
+
 // Audit log (owner/admin).
 export function useAuditLog(limit = 100) {
   return useQuery({

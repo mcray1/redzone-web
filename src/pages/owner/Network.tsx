@@ -1,18 +1,28 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNetwork, useSubscribers, useUpdateSubscriber } from '../../hooks/queries';
+import { useNetwork, useSubscribers, useUpdateSubscriber, useNetworkSetup } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import type { NetworkNode } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
 
 export default function Network() {
   const { data, isLoading } = useNetwork();
+  const { hasPerm } = useAuth();
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="font-display text-2xl font-700">Network</h1>
-        <p className="text-sm text-ink/50">Live router health reported by the on-network agent (read-only).</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-700">Network</h1>
+          <p className="text-sm text-ink/50">Live router health reported by each device (read-only).</p>
+        </div>
+        {hasPerm('routers.manage') && (
+          <button className="btn-primary shrink-0" onClick={() => setAddOpen(true)}>Add device</button>
+        )}
       </div>
+
+      {addOpen && <AddDeviceModal onClose={() => setAddOpen(false)} />}
 
       {isLoading ? (
         <Spinner />
@@ -23,6 +33,104 @@ export default function Network() {
           {data.map((n) => <NodeCard key={n.id} node={n} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+// Builds the RouterOS script a new MikroTik pastes to start reporting.
+function buildScript(url: string, token: string, name: string) {
+  return `/system script add name=redzone-report dont-require-permissions=no source={
+  :local url "${url}"
+  :local token "${token}"
+  :local nodeName "${name}"
+  :local r [/system resource get]
+  :local cpu ($r->"cpu-load")
+  :local fm ($r->"free-memory")
+  :local tm ($r->"total-memory")
+  :local up [:tostr ($r->"uptime")]
+  :local ver ($r->"version")
+  :local memused 0
+  :if ($tm > 0) do={ :set memused (100 - ($fm * 100 / $tm)) }
+  :local ids [/ppp active find]
+  :local sess [:len $ids]
+  :local arr ""
+  :local n 0
+  :foreach i in=$ids do={
+    :if ($n < 60) do={
+      :local un [/ppp active get $i name]
+      :local ad [/ppp active get $i address]
+      :if ($n > 0) do={ :set arr ($arr . ",") }
+      :set arr ($arr . "{\\"name\\":\\"$un\\",\\"address\\":\\"$ad\\"}")
+      :set n ($n + 1)
+    }
+  }
+  :local body "{\\"name\\":\\"$nodeName\\",\\"cpuLoad\\":$cpu,\\"memUsedPct\\":$memused,\\"uptime\\":\\"$up\\",\\"version\\":\\"$ver\\",\\"sessionCount\\":$sess,\\"sessions\\":[$arr]}"
+  /tool fetch url=$url http-method=post mode=https check-certificate=no output=none \\
+    http-header-field="x-agent-token: $token,Content-Type: application/json" \\
+    http-data=$body
+}
+/system scheduler add name=redzone-report interval=1m on-event="/system script run redzone-report"
+# Test now:  /system script run redzone-report`;
+}
+
+function AddDeviceModal({ onClose }: { onClose: () => void }) {
+  const { data: setup, isLoading } = useNetworkSetup();
+  const [name, setName] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const script = setup ? buildScript(setup.reportUrl, setup.token, name.trim() || 'New Router') : '';
+
+  async function copy() {
+    try { await navigator.clipboard.writeText(script); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* clipboard may be blocked; the user can select manually */ }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="font-display text-lg font-700">Add a device</h2>
+        <p className="mt-1 text-sm text-ink/50">
+          Any MikroTik router can report itself to RedZone over the internet — no extra box, no VPN.
+        </p>
+
+        {isLoading ? (
+          <div className="mt-4"><Spinner /></div>
+        ) : !setup?.configured ? (
+          <div className="mt-4 rounded-xl border border-warn/40 bg-warn/5 p-4 text-sm text-ink/70">
+            Monitoring isn't switched on yet. Set an <span className="font-mono">AGENT_TOKEN</span> in Render
+            (redzone-api → Environment) — a long random string — then reopen this.
+          </div>
+        ) : (
+          <>
+            <div className="mt-4">
+              <label className="label">Name this device</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Barangay Tabun Tower" autoFocus />
+              <p className="mt-1 text-xs text-ink/40">This is the label you'll see in the Network list.</p>
+            </div>
+
+            <ol className="mt-4 space-y-1.5 text-sm text-ink/70">
+              <li><span className="font-600">1.</span> Open the new router in WinBox or WebFig → <span className="font-600">New Terminal</span>.</li>
+              <li><span className="font-600">2.</span> Paste the whole script below and press Enter.</li>
+              <li><span className="font-600">3.</span> Test it: run <span className="font-mono text-xs">/system script run redzone-report</span></li>
+              <li><span className="font-600">4.</span> It appears here within about a minute, and refreshes every minute after.</li>
+            </ol>
+
+            <div className="mt-3">
+              <div className="flex items-center justify-between">
+                <label className="label">Script to paste</label>
+                <button className="text-sm font-600 text-signal-600" onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+              </div>
+              <pre className="mt-1 max-h-56 overflow-auto rounded-xl bg-ink px-3 py-3 text-[11px] leading-relaxed text-white/90">{script}</pre>
+              <p className="mt-2 text-xs text-ink/40">
+                The token in this script is shared by all your devices — keep it private. To replace an old script on a
+                router first run: <span className="font-mono">/system scheduler remove [find name=redzone-report]; /system script remove [find name=redzone-report]</span>
+              </p>
+            </div>
+
+            <button className="btn-primary mt-4 w-full" onClick={onClose}>Done</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
