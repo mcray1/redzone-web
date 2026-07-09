@@ -19,6 +19,8 @@ export type PermissionKey =
   | 'inventory.manage'
   | 'network.view'
   | 'routers.manage'
+  | 'cpe.view'
+  | 'cpe.manage'
   | 'coverage.assign'
   | 'reports.view'
   | 'payroll.view'
@@ -322,6 +324,22 @@ export interface InventoryMovement {
   quantity: number;
   note?: string | null;
   createdAt: string;
+}
+
+// --- CPE devices (GenieACS / TR-069) ---
+export interface CpeDevice {
+  id: string;
+  serial?: string | null;
+  productClass?: string | null;
+  manufacturer?: string | null;
+  oui?: string | null;
+  pppoeUsername?: string | null;
+  ssid?: string | null;
+  uptimeSeconds?: number | null;
+  software?: string | null;
+  lastInform?: string | null;
+  online: boolean;
+  subscriber?: { id: string; fullName: string; accountNo: string; pppoeUsername?: string | null } | null;
 }
 
 // --- Network monitoring ---

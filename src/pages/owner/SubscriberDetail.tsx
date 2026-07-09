@@ -8,6 +8,7 @@ import { Spinner, StatusPill } from '../../components/ui';
 import { LocationSelect } from '../../components/LocationSelect';
 import { FileUpload } from '../../components/FileUpload';
 import { ProofLink } from '../../components/ProofLink';
+import { CpePanel } from '../../components/CpePanel';
 
 export default function SubscriberDetail() {
   const { id } = useParams();
@@ -98,6 +99,9 @@ export default function SubscriberDetail() {
           <p className="mt-3 text-sm text-ink/40">No payments recorded yet.</p>
         )}
       </div>
+
+      {/* Customer equipment (GenieACS) — renders only when the integration is on */}
+      <CpePanel subscriberId={s.id} />
 
       {/* Customer portal login */}
       <div className="card p-5">

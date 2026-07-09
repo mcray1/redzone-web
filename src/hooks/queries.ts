@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -946,3 +946,40 @@ export function useAuditLog(limit = 100) {
     queryFn: async () => (await api.get<AuditEntry[]>('/stats/audit', { params: { limit } })).data,
   });
 }
+
+// --- CPE devices (GenieACS / TR-069) ---
+// Whether the integration is switched on (env configured on the backend).
+export function useCpeConfigured(enabled = true) {
+  return useQuery({
+    queryKey: ['cpe-status'],
+    enabled,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await api.get<{ configured: boolean }>('/cpe/status')).data.configured,
+  });
+}
+
+// The CPE device for one subscriber (matched by PPPoE username).
+export function useCpeForSubscriber(subscriberId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['cpe-subscriber', subscriberId],
+    enabled: !!subscriberId && enabled,
+    queryFn: async () =>
+      (await api.get<{ device: CpeDevice | null; reason?: string | null }>(`/cpe/subscriber/${subscriberId}`)).data,
+  });
+}
+
+function useCpeAction<T>(path: (id: string) => string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string } & T) => {
+      const { subscriberId, ...body } = p as { subscriberId: string } & Record<string, unknown>;
+      return (await api.post(path(subscriberId), body)).data;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', (v as { subscriberId: string }).subscriberId] }),
+  });
+}
+
+export const useRebootCpe = () => useCpeAction<Record<string, never>>((id) => `/cpe/subscriber/${id}/reboot`);
+export const useRefreshCpe = () => useCpeAction<Record<string, never>>((id) => `/cpe/subscriber/${id}/refresh`);
+export const useSetCpeWifi = () => useCpeAction<{ ssid?: string; password?: string }>((id) => `/cpe/subscriber/${id}/wifi`);
+export const useSetCpePppoe = () => useCpeAction<{ username?: string; password?: string }>((id) => `/cpe/subscriber/${id}/pppoe`);
