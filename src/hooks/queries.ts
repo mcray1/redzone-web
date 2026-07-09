@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -876,6 +876,15 @@ export function useItemMovements(id: string | null) {
     queryKey: ['item-movements', id],
     enabled: !!id,
     queryFn: async () => (await api.get<InventoryMovement[]>(`/inventory/items/${id}/movements`)).data,
+  });
+}
+
+// Network monitoring (owner/admin) — auto-refreshes.
+export function useNetwork() {
+  return useQuery({
+    queryKey: ['network'],
+    refetchInterval: 30_000,
+    queryFn: async () => (await api.get<NetworkNode[]>('/network')).data,
   });
 }
 

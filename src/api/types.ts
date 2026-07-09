@@ -282,3 +282,18 @@ export interface InventoryMovement {
   note?: string | null;
   createdAt: string;
 }
+
+// --- Network monitoring ---
+export interface NetworkNode {
+  id: string;
+  name: string;
+  host?: string | null;
+  cpuLoad?: number | null;
+  memUsedPct?: number | null;
+  uptime?: string | null;
+  version?: string | null;
+  sessionCount?: number | null;
+  sessions?: Array<{ name: string; address?: string; uptime?: string }> | null;
+  lastReportAt?: string | null;
+  online: boolean;
+}
