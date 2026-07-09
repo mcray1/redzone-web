@@ -29,6 +29,7 @@ export default function Register() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [barangay, setBarangay] = useState('');
   const [sitio, setSitio] = useState('');
@@ -59,6 +60,10 @@ export default function Register() {
       setError('Please enter your name and mobile number.');
       return;
     }
+    if (!email.trim() || password.length < 8) {
+      setError('Please enter an email and a password of at least 8 characters — you will use these to sign in.');
+      return;
+    }
     if (isVendo) {
       if (!municipality || !barangay) { setError('Please choose the municipality and barangay for the vendo.'); return; }
       if (!address.trim()) { setError('Please add a landmark so we can find the exact spot.'); return; }
@@ -71,7 +76,8 @@ export default function Register() {
         type,
         fullName: fullName.trim(),
         phone: phone.trim(),
-        email: email.trim() || undefined,
+        email: email.trim(),
+        password,
         municipality: municipality || undefined,
         barangay: barangay || undefined,
         sitio: sitio || undefined,
@@ -94,12 +100,11 @@ export default function Register() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-good/15 text-3xl">✓</div>
           <h1 className="mt-6 font-display text-2xl font-700">Application received!</h1>
           <p className="mt-2 text-ink/60">
-            Salamat, {fullName.split(' ')[0]}! Our team will contact you on <span className="font-600">{phone}</span> to
-            confirm coverage and schedule your installation.
+            Salamat, {fullName.split(' ')[0]}! You can now <span className="font-600">sign in with your email</span> to
+            track your application. Our team will contact you on <span className="font-600">{phone}</span> to confirm
+            coverage and schedule your installation.
           </p>
-          <Link to="/register" onClick={() => window.location.reload()} className="btn-ghost mx-auto mt-6">
-            Submit another
-          </Link>
+          <Link to="/login" className="btn-primary mx-auto mt-6">Sign in to track it</Link>
         </div>
       </div>
     );
@@ -139,9 +144,14 @@ export default function Register() {
                 <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0917xxxxxxx" inputMode="tel" />
               </div>
               <div>
-                <label className="label">Email (optional)</label>
-                <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" inputMode="email" />
+                <label className="label">Email *</label>
+                <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" inputMode="email" autoComplete="email" />
               </div>
+            </div>
+            <div>
+              <label className="label">Create a password *</label>
+              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="at least 8 characters" autoComplete="new-password" />
+              <p className="mt-1 text-xs text-ink/40">You'll sign in with your email and this password to track your application.</p>
             </div>
           </div>
 

@@ -269,6 +269,9 @@ export function useUpdateTicket() {
 export function useMyAccount() {
   return useQuery({
     queryKey: ['my-account'],
+    // A self-registered applicant has no subscriber yet (404) — don't retry, so
+    // the portal falls through to the application-status view quickly.
+    retry: false,
     queryFn: async () => {
       const { data } = await api.get<Subscriber & { payments: Payment[] }>('/subscribers/me/account');
       return data;
@@ -1027,10 +1030,29 @@ export function useSubmitRegistration() {
   return useMutation({
     mutationFn: async (p: {
       type?: 'PLAN' | 'VENDO';
-      fullName: string; phone: string; email?: string; address?: string;
-      sitio?: string; barangay?: string; municipality?: string; servicePlanId?: string;
+      fullName: string; phone: string; email: string; password: string; address?: string;
+      sitio?: string; barangay?: string; municipality?: string;
       estimatedClients?: number; notes?: string; gpsLat?: number; gpsLng?: number;
     }) => (await api.post('/public/register', p)).data,
+  });
+}
+
+// The signed-in applicant's own application status (null once they have a
+// subscriber account or never registered).
+export function useMyRegistration(enabled = true) {
+  return useQuery({
+    queryKey: ['my-registration'],
+    enabled,
+    queryFn: async () => (await api.get<{ registration: Registration | null }>('/registrations/me')).data.registration,
+  });
+}
+
+// Staff: a suggested account number for a registration (SE-260709-01).
+export function useSuggestedAccount(id: string | undefined) {
+  return useQuery({
+    queryKey: ['suggested-account', id],
+    enabled: !!id,
+    queryFn: async () => (await api.get<{ accountNo: string }>(`/registrations/${id}/suggested-account`)).data.accountNo,
   });
 }
 

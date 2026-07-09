@@ -364,6 +364,8 @@ export interface Registration {
   notes?: string | null;
   rejectReason?: string | null;
   subscriberId?: string | null;
+  userId?: string | null;
+  hasLogin?: boolean;
   createdAt: string;
   decidedAt?: string | null;
 }

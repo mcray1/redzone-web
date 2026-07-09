@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { useRegistrations, useApproveRegistration, useRejectRegistration, usePlans } from '../../hooks/queries';
+import { useRegistrations, useApproveRegistration, useRejectRegistration, usePlans, useSuggestedAccount } from '../../hooks/queries';
 import { peso, type Registration } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
 
@@ -99,8 +99,10 @@ function StatusTag({ status }: { status: Registration['status'] }) {
 function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void }) {
   const approve = useApproveRegistration();
   const { data: plans } = usePlans();
+  const { data: suggested } = useSuggestedAccount(reg.id);
   const nav = useNavigate();
   const [accountNo, setAccountNo] = useState('');
+  const [accountTouched, setAccountTouched] = useState(false);
   const [servicePlanId, setServicePlanId] = useState(reg.servicePlanId ?? '');
   const [dueDay, setDueDay] = useState('1');
   const [makeLogin, setMakeLogin] = useState(false);
@@ -108,21 +110,25 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
   const [loginPassword, setLoginPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
+  // Prefill the suggested account number until the staffer edits it.
+  useEffect(() => {
+    if (suggested && !accountTouched) setAccountNo(suggested);
+  }, [suggested, accountTouched]);
+
   async function go() {
     setErr(null);
-    if (!accountNo.trim()) { setErr('Enter an account number.'); return; }
-    if (makeLogin && (!loginEmail.trim() || loginPassword.length < 8)) {
+    if (!reg.hasLogin && makeLogin && (!loginEmail.trim() || loginPassword.length < 8)) {
       setErr('For a portal login, enter an email and a password of at least 8 characters.');
       return;
     }
     try {
       const res = await approve.mutateAsync({
         id: reg.id,
-        accountNo: accountNo.trim(),
+        accountNo: accountNo.trim() || undefined,
         servicePlanId: servicePlanId || null,
         dueDay: Number(dueDay) || 1,
-        loginEmail: makeLogin ? loginEmail.trim() : undefined,
-        loginPassword: makeLogin ? loginPassword : undefined,
+        loginEmail: !reg.hasLogin && makeLogin ? loginEmail.trim() : undefined,
+        loginPassword: !reg.hasLogin && makeLogin ? loginPassword : undefined,
       });
       onClose();
       if (res?.subscriberId) nav(`/owner/subscribers/${res.subscriberId}`);
@@ -138,8 +144,11 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
         <p className="mt-1 text-sm text-ink/50">Creates a subscriber (pending installation) and an installation job.</p>
         <div className="mt-4 space-y-3">
           <div>
-            <label className="label">Account number *</label>
-            <input className="input" value={accountNo} onChange={(e) => setAccountNo(e.target.value)} placeholder="e.g. RZ-0421" autoFocus />
+            <label className="label">Account number</label>
+            <input className="input" value={accountNo}
+              onChange={(e) => { setAccountNo(e.target.value); setAccountTouched(true); }}
+              placeholder="auto (e.g. SE-260709-01)" autoFocus />
+            <p className="mt-1 text-xs text-ink/40">Auto-suggested from town + date. Edit if you like, or leave blank to auto-generate.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {reg.type !== 'VENDO' && (
@@ -159,19 +168,25 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
             </div>
           </div>
 
-          <div className="rounded-xl border border-line p-3">
-            <label className="flex items-center gap-2 text-sm font-600">
-              <input type="checkbox" className="h-4 w-4 accent-signal-600" checked={makeLogin} onChange={(e) => setMakeLogin(e.target.checked)} />
-              Also create a portal login now
-            </label>
-            {makeLogin && (
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <input className="input" type="email" placeholder="login email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
-                <input className="input" type="text" placeholder="temp password (min 8)" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
-                <p className="text-xs text-ink/40 sm:col-span-2">Share this with the customer; they can change it after signing in.</p>
-              </div>
-            )}
-          </div>
+          {reg.hasLogin ? (
+            <p className="rounded-xl border border-good/30 bg-good/5 px-3 py-2 text-xs text-good">
+              ✓ This client already has a login ({reg.email}). It will be linked to their new account automatically.
+            </p>
+          ) : (
+            <div className="rounded-xl border border-line p-3">
+              <label className="flex items-center gap-2 text-sm font-600">
+                <input type="checkbox" className="h-4 w-4 accent-signal-600" checked={makeLogin} onChange={(e) => setMakeLogin(e.target.checked)} />
+                Also create a portal login now
+              </label>
+              {makeLogin && (
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input className="input" type="email" placeholder="login email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+                  <input className="input" type="text" placeholder="temp password (min 8)" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                  <p className="text-xs text-ink/40 sm:col-span-2">Share this with the customer; they can change it after signing in.</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {err && <p className="text-sm text-bad">{err}</p>}
           <div className="flex gap-2 pt-1">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension } from '../../hooks/queries';
+import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
@@ -39,11 +39,7 @@ export default function Portal() {
 
       <main className="mx-auto -mt-5 max-w-md space-y-4 px-4">
         {isLoading ? <Spinner /> : !s ? (
-          <div className="card p-6 text-center">
-            <SignalMark className="mx-auto h-8 w-8 text-ink/20" />
-            <p className="mt-2 font-600">No account linked</p>
-            <p className="mt-1 text-sm text-ink/50">Contact RedZone support to link your subscription.</p>
-          </div>
+          <ApplicationStatus />
         ) : (
           <>
             {/* Connection status card */}
@@ -120,6 +116,39 @@ export default function Portal() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+// Shown to a self-registered client who doesn't have a subscriber account yet:
+// where their application stands.
+function ApplicationStatus() {
+  const { data: reg, isLoading } = useMyRegistration();
+  if (isLoading) return <Spinner />;
+  if (!reg) {
+    return (
+      <div className="card p-6 text-center">
+        <SignalMark className="mx-auto h-8 w-8 text-ink/20" />
+        <p className="mt-2 font-600">No account linked</p>
+        <p className="mt-1 text-sm text-ink/50">Contact RedZone support to link your subscription.</p>
+      </div>
+    );
+  }
+  const view = {
+    PENDING: { cls: 'bg-signal/15 text-warn', title: 'Application under review', body: 'Thanks for signing up! Our team is reviewing your application and will contact you to confirm coverage and schedule your installation.' },
+    APPROVED: { cls: 'bg-good/10 text-good', title: 'Approved — installation coming up', body: 'Your application was approved and we are preparing your installation. This page becomes your account dashboard once you are activated.' },
+    REJECTED: { cls: 'bg-bad/10 text-bad', title: 'Application not approved', body: reg.rejectReason ? `Reason: ${reg.rejectReason}` : 'Please contact RedZone support for more details.' },
+  }[reg.status];
+  return (
+    <div className="card p-6">
+      <span className={`pill ${view.cls}`}>{reg.status.toLowerCase()}</span>
+      <h2 className="mt-3 font-display text-lg font-700">{view.title}</h2>
+      <p className="mt-1 text-sm text-ink/60">{view.body}</p>
+      <div className="mt-4 space-y-1 border-t border-line pt-4 text-sm text-ink/60">
+        <p>For: <span className="font-600">{reg.type === 'VENDO' ? 'WiFi Vendo' : 'Home internet'}</span></p>
+        {reg.servicePlan && <p>Plan: <span className="font-600">{reg.servicePlan.name}</span></p>}
+        <p>Applied: {new Date(reg.createdAt).toLocaleDateString('en-PH')}</p>
+      </div>
     </div>
   );
 }
