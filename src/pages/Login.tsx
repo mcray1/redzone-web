@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/ui';
@@ -64,6 +64,14 @@ export default function Login() {
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
+
+          {/* Prospective clients — public sign-up form */}
+          <div className="mt-6 rounded-xl border border-white/10 bg-ink-700/60 p-4 text-center">
+            <p className="text-sm text-white/70">Not a customer yet?</p>
+            <Link to="/register" className="mt-2 inline-block font-600 text-signal-300">
+              Sign up for internet or a WiFi Vendo →
+            </Link>
+          </div>
 
           <p className="mt-6 text-center text-xs text-white/40">
             Trouble signing in? Contact RedZone support.
