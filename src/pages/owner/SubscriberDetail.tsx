@@ -9,6 +9,7 @@ import { LocationSelect } from '../../components/LocationSelect';
 import { FileUpload } from '../../components/FileUpload';
 import { ProofLink } from '../../components/ProofLink';
 import { CpePanel } from '../../components/CpePanel';
+import { MapThumbnail } from '../../components/MapThumbnail';
 
 export default function SubscriberDetail() {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export default function SubscriberDetail() {
             {hasPerm('subscribers.edit') && (
               <button className="text-sm font-600 text-signal-600" onClick={() => setEditOpen(true)}>Edit</button>
             )}
+            {s.accountType === 'VENDO' && <span className="pill bg-signal/15 text-signal-600">Vendo</span>}
             {s.billingExempt && <span className="pill bg-ink/10 text-ink/60">Free</span>}
             <StatusPill status={s.status} />
           </div>
@@ -51,11 +53,15 @@ export default function SubscriberDetail() {
           <Field label="Barangay" value={s.barangay ?? '—'} />
           <Field label="Municipality" value={s.municipality ?? '—'} />
           <Field label="PPPoE username" value={s.pppoeUsername ?? '—'} />
+          {s.accountType === 'VENDO' && (
+            <Field label="Est. clients" value={s.estimatedClients != null ? String(s.estimatedClients) : '—'} />
+          )}
         </div>
 
         {s.gpsLat != null && s.gpsLng != null && (
-          <a href={`https://www.google.com/maps?q=${s.gpsLat},${s.gpsLng}`} target="_blank" rel="noreferrer"
-            className="mt-3 inline-block text-sm font-600 text-signal-600">📍 Open pinned location in Maps</a>
+          <div className="mt-4">
+            <MapThumbnail lat={s.gpsLat} lng={s.gpsLng} />
+          </div>
         )}
 
         {(() => {

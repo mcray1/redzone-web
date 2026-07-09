@@ -64,9 +64,13 @@ export interface ServicePlan {
   active?: boolean;
 }
 
+export type AccountType = 'PLAN' | 'VENDO';
+
 export interface Subscriber {
   id: string;
   accountNo: string;
+  accountType?: AccountType;
+  estimatedClients?: number | null;
   fullName: string;
   email?: string | null;
   phone?: string | null;

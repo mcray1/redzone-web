@@ -17,21 +17,31 @@ const FILTERS: Array<{ key: string; label: string }> = [
 export default function Subscribers() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
+  const [type, setType] = useState<'PLAN' | 'VENDO'>('PLAN');
   const [showAdd, setShowAdd] = useState(false);
   const nav = useNavigate();
   const { hasPerm } = useAuth();
-  const { data, isLoading } = useSubscribers({ q: q || undefined, status: status || undefined });
+  const { data, isLoading } = useSubscribers({ q: q || undefined, status: status || undefined, type });
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-700">Subscribers</h1>
-          <p className="text-sm text-ink/50">{data?.total ?? 0} total</p>
+          <h1 className="font-display text-2xl font-700">{type === 'VENDO' ? 'Vendo sites' : 'Subscribers'}</h1>
+          <p className="text-sm text-ink/50">{data?.total ?? 0} {type === 'VENDO' ? 'vendo' : 'paying'}</p>
         </div>
         {hasPerm('subscribers.add') && (
           <button className="btn-primary" onClick={() => setShowAdd(true)}>Add subscriber</button>
         )}
+      </div>
+
+      <div className="flex gap-2">
+        {(['PLAN', 'VENDO'] as const).map((t) => (
+          <button key={t} onClick={() => setType(t)}
+            className={`flex-1 rounded-xl border px-4 py-2 text-sm font-600 ${type === t ? 'border-signal-600 bg-signal/5 text-signal-600' : 'border-line text-ink/60'}`}>
+            {t === 'PLAN' ? 'Paying accounts' : 'Vendo sites'}
+          </button>
+        ))}
       </div>
 
       <div className="space-y-3">
@@ -57,7 +67,10 @@ export default function Subscribers() {
               <div className="min-w-0">
                 <p className="truncate font-600">{s.fullName}</p>
                 <p className="text-xs text-ink/50">
-                  {s.accountNo}{s.servicePlan ? ` · ${s.servicePlan.name}` : ''}
+                  {s.accountNo}
+                  {type === 'VENDO'
+                    ? (s.estimatedClients != null ? ` · est. ${s.estimatedClients} clients` : '')
+                    : (s.servicePlan ? ` · ${s.servicePlan.name}` : '')}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
