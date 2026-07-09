@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const APPS = [
-  { key: 'owner', label: 'Admin', to: '/owner', roles: ['OWNER', 'ADMIN'] },
+  { key: 'owner', label: 'Office', to: '/owner', roles: ['OWNER', 'ADMIN', 'MANAGER'] },
   { key: 'collector', label: 'Collector', to: '/collector', roles: ['COLLECTOR'] },
   { key: 'technician', label: 'Technician', to: '/technician', roles: ['TECHNICIAN'] },
 ];

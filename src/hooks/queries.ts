@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -60,9 +60,10 @@ export function useRecordPayment() {
 // Owner stats are derived client-side from the subscriber list for now.
 // Dashboard/billing stats — computed in the database via /stats/overview.
 // Returns aggregates plus small pre-sorted lists, so no page pulls every subscriber.
-export function useOwnerStats() {
+export function useOwnerStats(opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['owner-stats'],
+    enabled: opts?.enabled ?? true,
     queryFn: async () => {
       const { data } = await api.get<{
         total: number;
@@ -153,6 +154,54 @@ export function useSetStaffRoles() {
     mutationFn: async (p: { id: string; roles: string[] }) =>
       (await api.patch(`/users/${p.id}/roles`, { roles: p.roles })).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  });
+}
+
+// Assign (or clear with null) a named custom role for a staff member.
+export function useSetStaffCustomRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; customRoleId: string | null }) =>
+      (await api.patch(`/users/${p.id}/custom-role`, { customRoleId: p.customRoleId })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff'] });
+      qc.invalidateQueries({ queryKey: ['custom-roles'] });
+    },
+  });
+}
+
+// --- Custom roles (permissions) ---
+export function usePermissionCatalog() {
+  return useQuery({
+    queryKey: ['permission-catalog'],
+    queryFn: async () => (await api.get<PermissionCatalogItem[]>('/roles/catalog')).data,
+    staleTime: Infinity,
+  });
+}
+
+export function useCustomRoles() {
+  return useQuery({
+    queryKey: ['custom-roles'],
+    queryFn: async () => (await api.get<CustomRole[]>('/roles')).data,
+  });
+}
+
+export function useSaveCustomRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id?: string; name: string; permissions: string[] }) => {
+      if (p.id) return (await api.patch(`/roles/${p.id}`, { name: p.name, permissions: p.permissions })).data;
+      return (await api.post('/roles', { name: p.name, permissions: p.permissions })).data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-roles'] }),
+  });
+}
+
+export function useDeleteCustomRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/roles/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-roles'] }),
   });
 }
 

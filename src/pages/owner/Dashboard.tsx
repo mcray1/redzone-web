@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
 import { useOwnerStats, useAttention } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 
@@ -51,7 +52,21 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 }
 
 export default function Dashboard() {
-  const { data, isLoading } = useOwnerStats();
+  const { user, hasPerm } = useAuth();
+  const canViewReports = hasPerm('reports.view');
+  const { data, isLoading } = useOwnerStats({ enabled: canViewReports });
+
+  // A manager without the "view collections & reports" capability can't see the
+  // numbers — greet them instead of spinning forever on a blocked request.
+  if (!canViewReports) {
+    return (
+      <div className="space-y-4">
+        <h1 className="font-display text-2xl font-700">Welcome{user?.name ? `, ${user.name}` : ''}</h1>
+        <p className="text-sm text-ink/60">Use the menu to reach the areas your role allows.</p>
+      </div>
+    );
+  }
+
   if (isLoading || !data) return <Spinner />;
 
   // Status breakdown bar (real data) — not a fake trend line.

@@ -1,12 +1,15 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, tokens } from '../api/client';
-import type { User } from '../api/types';
+import type { User, PermissionKey } from '../api/types';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   logout: () => void;
+  // True if the signed-in user can perform this capability. Owners/admins hold
+  // '*' and can do everything. This is a UI hint only — the backend still enforces.
+  hasPerm: (key: PermissionKey) => boolean;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -41,7 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  return <Ctx.Provider value={{ user, loading, login, logout }}>{children}</Ctx.Provider>;
+  function hasPerm(key: PermissionKey) {
+    const perms = user?.permissions ?? [];
+    return perms.includes('*') || perms.includes(key);
+  }
+
+  return <Ctx.Provider value={{ user, loading, login, logout, hasPerm }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

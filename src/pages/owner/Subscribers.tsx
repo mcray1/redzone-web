@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useSubscribers, useCreateSubscriber, usePlans } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill, EmptyState } from '../../components/ui';
 import { LocationSelect } from '../../components/LocationSelect';
@@ -18,6 +19,7 @@ export default function Subscribers() {
   const [status, setStatus] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const nav = useNavigate();
+  const { hasPerm } = useAuth();
   const { data, isLoading } = useSubscribers({ q: q || undefined, status: status || undefined });
 
   return (
@@ -27,7 +29,9 @@ export default function Subscribers() {
           <h1 className="font-display text-2xl font-700">Subscribers</h1>
           <p className="text-sm text-ink/50">{data?.total ?? 0} total</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAdd(true)}>Add subscriber</button>
+        {hasPerm('subscribers.add') && (
+          <button className="btn-primary" onClick={() => setShowAdd(true)}>Add subscriber</button>
+        )}
       </div>
 
       <div className="space-y-3">

@@ -1,4 +1,15 @@
-export type Role = 'OWNER' | 'ADMIN' | 'COLLECTOR' | 'TECHNICIAN' | 'CUSTOMER';
+export type Role = 'OWNER' | 'ADMIN' | 'MANAGER' | 'COLLECTOR' | 'TECHNICIAN' | 'CUSTOMER';
+
+// Capability keys a custom (manager) role can be granted. '*' means "everything"
+// and is what the token/login returns for owners and admins.
+export type PermissionKey =
+  | 'subscribers.add'
+  | 'payments.void'
+  | 'remittances.verify'
+  | 'reports.view'
+  | 'extensions.approve'
+  | 'expenses.approve'
+  | 'coverage.assign';
 
 export interface User {
   id: string;
@@ -7,6 +18,19 @@ export interface User {
   role: Role;
   roles?: Role[];
   branchId?: string | null;
+  permissions?: Array<PermissionKey | '*'>;
+}
+
+export interface CustomRole {
+  id: string;
+  name: string;
+  permissions: PermissionKey[];
+  userCount?: number;
+}
+
+export interface PermissionCatalogItem {
+  key: PermissionKey;
+  label: string;
 }
 
 export type SubscriberStatus =
@@ -117,6 +141,8 @@ export interface StaffUser {
   active: boolean;
   municipalities?: string[];
   createdAt: string;
+  customRoleId?: string | null;
+  customRole?: { id: string; name: string; permissions: PermissionKey[] } | null;
 }
 
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';

@@ -9,6 +9,7 @@ import SubscriberDetail from './pages/owner/SubscriberDetail';
 import Billing from './pages/owner/Billing';
 import Plans from './pages/owner/Plans';
 import Staff from './pages/owner/Staff';
+import Roles from './pages/owner/Roles';
 import Tickets from './pages/owner/Tickets';
 import Collector from './pages/collector/Collector';
 import Technician from './pages/technician/Technician';
@@ -22,7 +23,7 @@ import Network from './pages/owner/Network';
 import Portal from './pages/portal/Portal';
 
 function landingFor(role: string) {
-  if (role === 'OWNER' || role === 'ADMIN') return '/owner';
+  if (role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER') return '/owner';
   if (role === 'COLLECTOR') return '/collector';
   if (role === 'TECHNICIAN') return '/technician';
   return '/portal';
@@ -51,7 +52,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Home />} />
 
-        <Route path="/owner" element={<Protected roles={['OWNER', 'ADMIN']}><OwnerLayout /></Protected>}>
+        <Route path="/owner" element={<Protected roles={['OWNER', 'ADMIN', 'MANAGER']}><OwnerLayout /></Protected>}>
           <Route index element={<Dashboard />} />
           <Route path="subscribers" element={<Subscribers />} />
           <Route path="subscribers/:id" element={<SubscriberDetail />} />
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="plans" element={<Plans />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="staff" element={<Staff />} />
+          <Route path="roles" element={<Roles />} />
           <Route path="installations" element={<Installations />} />
           <Route path="payroll" element={<Payroll />} />
           <Route path="reports" element={<Reports />} />

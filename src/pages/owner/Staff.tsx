@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useStaff, useCreateStaff, useSetStaffActive, useSetStaffRoles } from '../../hooks/queries';
+import { useStaff, useCreateStaff, useSetStaffActive, useSetStaffRoles, useCustomRoles, useSetStaffCustomRole } from '../../hooks/queries';
+import { useAuth } from '../../context/AuthContext';
 import type { StaffUser } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
 import { StaffScopeEditor } from './StaffScopeEditor';
 
 export default function Staff() {
+  const { user } = useAuth();
+  const isAdmin = (user?.roles ?? [user?.role]).some((r) => r === 'OWNER' || r === 'ADMIN');
   const { data: staff, isLoading } = useStaff();
   const setActive = useSetStaffActive();
   const [showAdd, setShowAdd] = useState(false);
   const [scopeUserId, setScopeUserId] = useState<string | null>(null);
   const [rolesUser, setRolesUser] = useState<StaffUser | null>(null);
+  const [mgrUser, setMgrUser] = useState<StaffUser | null>(null);
 
   return (
     <div className="space-y-5">
@@ -19,7 +23,7 @@ export default function Staff() {
           <h1 className="font-display text-2xl font-700">Staff</h1>
           <p className="text-sm text-ink/50">Admins and collectors who can log in.</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowAdd(true)}>Add staff</button>
+        {isAdmin && <button className="btn-primary" onClick={() => setShowAdd(true)}>Add staff</button>}
       </div>
 
       {isLoading ? <Spinner /> : !staff?.length ? (
@@ -32,6 +36,7 @@ export default function Staff() {
                 <p className="truncate font-600">{u.name} {u.role === 'OWNER' && <span className="text-xs text-ink/40">(you)</span>}</p>
                 <p className="text-xs text-ink/50">
                   {u.email} · {(u.roles && u.roles.length ? u.roles : [u.role]).join(' + ')}
+                  {u.customRole && <> · <span className="text-signal-600">{u.customRole.name}</span></>}
                   {u.role !== 'OWNER' && u.municipalities && u.municipalities.length > 0 && (
                     <> · {u.municipalities.join(', ')}</>
                   )}
@@ -39,17 +44,26 @@ export default function Staff() {
               </div>
               {u.role !== 'OWNER' && (
                 <div className="flex shrink-0 items-center gap-2">
-                  <button onClick={() => setRolesUser(u)} className="text-sm font-600 text-signal-600">
-                    Roles
-                  </button>
+                  {isAdmin && (
+                    <button onClick={() => setRolesUser(u)} className="text-sm font-600 text-signal-600">
+                      Roles
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button onClick={() => setMgrUser(u)} className="text-sm font-600 text-signal-600">
+                      Manager access
+                    </button>
+                  )}
                   <button onClick={() => setScopeUserId(u.id)} className="text-sm font-600 text-signal-600">
                     Coverage
                   </button>
-                  <button
-                    onClick={() => setActive.mutate({ id: u.id, active: !u.active })}
-                    className={`pill border ${u.active ? 'border-good/40 text-good' : 'border-ink/20 text-ink/40'}`}>
-                    {u.active ? 'Active' : 'Disabled'}
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setActive.mutate({ id: u.id, active: !u.active })}
+                      className={`pill border ${u.active ? 'border-good/40 text-good' : 'border-ink/20 text-ink/40'}`}>
+                      {u.active ? 'Active' : 'Disabled'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -60,6 +74,58 @@ export default function Staff() {
       {showAdd && <AddStaffModal onClose={() => setShowAdd(false)} />}
       {scopeUserId && <StaffScopeEditor userId={scopeUserId} onClose={() => setScopeUserId(null)} />}
       {rolesUser && <RolesModal user={rolesUser} onClose={() => setRolesUser(null)} />}
+      {mgrUser && <ManagerAccessModal user={mgrUser} onClose={() => setMgrUser(null)} />}
+    </div>
+  );
+}
+
+// Give a staff member a named manager role (a set of admin powers), or remove it.
+function ManagerAccessModal({ user, onClose }: { user: StaffUser; onClose: () => void }) {
+  const { data: roles, isLoading } = useCustomRoles();
+  const setCustomRole = useSetStaffCustomRole();
+  const [choice, setChoice] = useState<string>(user.customRoleId ?? '');
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save() {
+    setErr(null);
+    try {
+      await setCustomRole.mutateAsync({ id: user.id, customRoleId: choice || null });
+      onClose();
+    } catch {
+      setErr('Could not update manager access.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="font-display text-lg font-700">Manager access — {user.name}</h2>
+        <p className="mt-1 text-sm text-ink/50">
+          Assign a role built on the Roles page. This gives them a limited set of admin powers and access to the office app.
+        </p>
+        {isLoading ? (
+          <p className="mt-4 text-sm text-ink/50">Loading roles…</p>
+        ) : !roles?.length ? (
+          <p className="mt-4 text-sm text-ink/60">No roles exist yet. Create one on the Roles page first.</p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            <label className="label">Role</label>
+            <select className="input" value={choice} onChange={(e) => setChoice(e.target.value)}>
+              <option value="">None (no manager access)</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {err && <p className="mt-2 text-sm text-bad">{err}</p>}
+        <div className="mt-4 flex gap-2">
+          <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
+          <button className="btn-primary flex-1" disabled={setCustomRole.isPending} onClick={save}>
+            {setCustomRole.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
