@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNetwork } from '../../hooks/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNetwork, useSubscribers, useUpdateSubscriber } from '../../hooks/queries';
 import type { NetworkNode } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
 
@@ -38,6 +39,7 @@ function bar(pct: number | null | undefined) {
 
 function NodeCard({ node }: { node: NetworkNode }) {
   const [open, setOpen] = useState(false);
+  const [linking, setLinking] = useState<string | null>(null);
   const last = node.lastReportAt ? new Date(node.lastReportAt).toLocaleString('en-PH') : '—';
 
   return (
@@ -87,11 +89,60 @@ function NodeCard({ node }: { node: NetworkNode }) {
                   {s.accountNo ? ` · ${s.accountNo}` : ''}
                 </p>
               </div>
-              <span className="shrink-0 text-xs text-ink/50">{s.address || ''}{s.uptime ? ` · ${s.uptime}` : ''}</span>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="text-xs text-ink/50">{s.address || ''}</span>
+                {!s.subscriberName && (
+                  <button className="text-xs font-600 text-signal-600" onClick={() => setLinking(s.name)}>Link</button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      {linking && <LinkSessionModal username={linking} onClose={() => setLinking(null)} />}
+    </div>
+  );
+}
+
+function LinkSessionModal({ username, onClose }: { username: string; onClose: () => void }) {
+  const [q, setQ] = useState('');
+  const { data } = useSubscribers({ q: q || undefined, take: 15 });
+  const update = useUpdateSubscriber();
+  const qc = useQueryClient();
+  const [err, setErr] = useState<string | null>(null);
+
+  async function link(id: string) {
+    setErr(null);
+    try {
+      await update.mutateAsync({ id, data: { pppoeUsername: username } });
+      qc.invalidateQueries({ queryKey: ['network'] });
+      onClose();
+    } catch (e: unknown) {
+      const m = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErr(m || 'Could not link.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="font-display text-lg font-700">Link session</h2>
+        <p className="mt-1 text-sm text-ink/50">Attach PPPoE user <span className="font-mono">{username}</span> to a subscriber.</p>
+        <input className="input mt-3" placeholder="Search subscriber by name / account no."
+          value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        {err && <p className="mt-2 text-sm text-bad">{err}</p>}
+        <div className="mt-2 divide-y divide-line">
+          {(data?.items ?? []).map((s) => (
+            <button key={s.id} onClick={() => link(s.id)} disabled={update.isPending}
+              className="flex w-full items-center justify-between py-2.5 text-left text-sm hover:bg-paper">
+              <span className="truncate font-600">{s.fullName}</span>
+              <span className="shrink-0 text-xs text-ink/40">{s.accountNo}{s.pppoeUsername ? ' · has PPPoE' : ''}</span>
+            </button>
+          ))}
+          {q && (data?.items?.length ?? 0) === 0 && <p className="py-4 text-sm text-ink/40">No matches.</p>}
+        </div>
+      </div>
     </div>
   );
 }
