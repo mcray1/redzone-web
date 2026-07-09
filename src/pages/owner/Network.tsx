@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNetwork, useSubscribers, useUpdateSubscriber, useNetworkSetup } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import type { NetworkNode } from '../../api/types';
-import { Spinner, EmptyState } from '../../components/ui';
+import { Spinner } from '../../components/ui';
 
 export default function Network() {
   const { data, isLoading } = useNetwork();
@@ -27,7 +27,22 @@ export default function Network() {
       {isLoading ? (
         <Spinner />
       ) : !data || data.length === 0 ? (
-        <EmptyState title="No routers reporting yet" hint="Run the RedZone agent on a machine in your network to see live status here." />
+        <div className="card p-6">
+          <h2 className="font-display text-lg font-700">No devices reporting yet</h2>
+          <p className="mt-1 text-sm text-ink/60">
+            Here's how this page fills up:
+          </p>
+          <ol className="mt-3 space-y-2 text-sm text-ink/70">
+            <li><span className="font-600 text-signal-600">1.</span> Each MikroTik router runs a small self-report script (no extra hardware, no VPN).</li>
+            <li><span className="font-600 text-signal-600">2.</span> Every minute it sends its health — CPU, memory, uptime, and who's online — to RedZone over the internet. It's read-only; nothing on the router changes.</li>
+            <li><span className="font-600 text-signal-600">3.</span> Once a router reports, it shows up here as a live card and stays updated.</li>
+          </ol>
+          {hasPerm('routers.manage') ? (
+            <button className="btn-primary mt-4" onClick={() => setAddOpen(true)}>Add your first device</button>
+          ) : (
+            <p className="mt-4 text-xs text-ink/40">Ask an owner or admin to add a device.</p>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           {data.map((n) => <NodeCard key={n.id} node={n} />)}
