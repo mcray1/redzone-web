@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -814,6 +814,44 @@ export function useDecideExtension() {
       qc.invalidateQueries({ queryKey: ['extensions'] });
       qc.invalidateQueries({ queryKey: ['attention'] });
     },
+  });
+}
+
+// --- Inventory (owner/admin) ---
+export function useInventory() {
+  return useQuery({
+    queryKey: ['inventory'],
+    queryFn: async () => (await api.get<InventoryItem[]>('/inventory/items')).data,
+  });
+}
+export function useSaveItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id?: string; name: string; sku?: string; category: string; unit?: string; reorderLevel?: number; notes?: string }) => {
+      const { id, ...body } = p;
+      return id ? (await api.patch(`/inventory/items/${id}`, body)).data : (await api.post('/inventory/items', body)).data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory'] }),
+  });
+}
+export function useAdjustStock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; type: string; quantity: number; note?: string }) => {
+      const { id, ...body } = p;
+      return (await api.post(`/inventory/items/${id}/movements`, body)).data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['item-movements', v.id] });
+    },
+  });
+}
+export function useItemMovements(id: string | null) {
+  return useQuery({
+    queryKey: ['item-movements', id],
+    enabled: !!id,
+    queryFn: async () => (await api.get<InventoryMovement[]>(`/inventory/items/${id}/movements`)).data,
   });
 }
 

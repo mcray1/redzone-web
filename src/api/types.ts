@@ -258,3 +258,25 @@ export interface PayrollRunDetail extends PayrollRun {
   payslips: Payslip[];
   totals: { gross: number; advance: number; net: number };
 }
+
+// --- Inventory ---
+export type MovementType = 'STOCK_IN' | 'RETURNED' | 'STOCK_OUT' | 'DAMAGED' | 'ASSIGNED' | 'USED';
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku?: string | null;
+  category: string;
+  unit: string;
+  quantityOnHand: number;
+  reorderLevel: number;
+  notes?: string | null;
+  lowStock?: boolean;
+}
+export interface InventoryMovement {
+  id: string;
+  itemId: string;
+  type: MovementType;
+  quantity: number;
+  note?: string | null;
+  createdAt: string;
+}
