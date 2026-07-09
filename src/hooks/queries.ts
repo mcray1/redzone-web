@@ -45,6 +45,7 @@ export function useRecordPayment() {
       method: string;
       reference?: string;
       invoiceId?: string;
+      proofUrl?: string;
     }) => {
       const { data } = await api.post('/billing/payments', payload);
       return data as { receiptNo: string; balanceCents: number; restored: boolean };
@@ -694,7 +695,7 @@ export function useSaveExpense() {
   return useMutation({
     mutationFn: async (p: {
       id?: string; date: string; category: string; description: string;
-      amountCents: number; method?: string; vendor?: string; reference?: string;
+      amountCents: number; method?: string; vendor?: string; reference?: string; receiptPath?: string;
     }) => {
       const { id, ...body } = p;
       return id ? (await api.patch(`/expenses/${id}`, body)).data : (await api.post('/expenses', body)).data;

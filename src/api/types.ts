@@ -56,6 +56,7 @@ export interface Payment {
   createdAt: string;
   voided?: boolean;
   voidReason?: string | null;
+  proofUrl?: string | null;
 }
 
 export interface Expense {
@@ -67,6 +68,7 @@ export interface Expense {
   method?: string | null;
   vendor?: string | null;
   reference?: string | null;
+  receiptPath?: string | null;
   createdAt: string;
 }
 

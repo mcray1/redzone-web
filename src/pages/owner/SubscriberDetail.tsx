@@ -5,6 +5,8 @@ import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscrib
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 import { LocationSelect } from '../../components/LocationSelect';
+import { FileUpload } from '../../components/FileUpload';
+import { ProofLink } from '../../components/ProofLink';
 
 export default function SubscriberDetail() {
   const { id } = useParams();
@@ -67,6 +69,7 @@ export default function SubscriberDetail() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
+                  {p.proofUrl && <ProofLink path={p.proofUrl} label="Proof" />}
                   <span className="font-mono text-xs text-ink/40">{p.receiptNo}</span>
                   {!p.voided && <VoidButton paymentId={p.id} subscriberId={s.id} />}
                 </div>
@@ -319,6 +322,7 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
   { subscriberId: string; balanceCents: number; onClose: () => void }) {
   const pay = useRecordPayment();
   const [result, setResult] = useState<{ receiptNo: string; restored: boolean } | null>(null);
+  const [proofPath, setProofPath] = useState<string | null>(null);
   const { register, handleSubmit } = useForm<PayVals>({
     defaultValues: { amount: balanceCents > 0 ? balanceCents / 100 : undefined, method: 'CASH' },
   });
@@ -329,6 +333,7 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
       amountCents: Math.round(Number(vals.amount) * 100),
       method: vals.method,
       reference: vals.reference || undefined,
+      proofUrl: proofPath || undefined,
     });
     setResult({ receiptNo: r.receiptNo, restored: r.restored });
   }
@@ -365,6 +370,11 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
               <div>
                 <label className="label">Reference (optional)</label>
                 <input className="input" {...register('reference')} placeholder="GCash ref no., etc." />
+              </div>
+              <div>
+                <label className="label">Proof of payment (optional)</label>
+                <FileUpload kind="payment-proof" label="Attach screenshot / photo"
+                  onUploaded={setProofPath} />
               </div>
               <div className="flex gap-2 pt-1">
                 <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>

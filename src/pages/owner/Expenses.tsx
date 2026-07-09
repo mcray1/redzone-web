@@ -3,6 +3,8 @@ import { useExpenses, usePnl, useSaveExpense, useVoidExpense } from '../../hooks
 import { peso, type Expense } from '../../api/types';
 import { toCsv, downloadCsv, todayStamp, type CsvColumn } from '../../lib/csv';
 import { Spinner } from '../../components/ui';
+import { FileUpload } from '../../components/FileUpload';
+import { ProofLink } from '../../components/ProofLink';
 
 const CATEGORIES = [
   'ISP / bandwidth', 'Equipment', 'Salary', 'Fuel / transport', 'Tower / site rental',
@@ -119,6 +121,7 @@ export default function Expenses() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
+                  {e.receiptPath && <ProofLink path={e.receiptPath} label="Receipt" />}
                   <span className="font-600 text-bad">{peso(e.amountCents)}</span>
                   <button className="text-xs font-600 text-ink/50" onClick={() => setEditing(e)}>Edit</button>
                   <button className="text-xs font-600 text-bad"
@@ -148,6 +151,7 @@ function ExpenseModal({ expense, onClose }: { expense: Expense | null; onClose: 
   const [method, setMethod] = useState(expense?.method ?? '');
   const [vendor, setVendor] = useState(expense?.vendor ?? '');
   const [reference, setReference] = useState(expense?.reference ?? '');
+  const [receiptPath, setReceiptPath] = useState<string | null>(expense?.receiptPath ?? null);
   const [err, setErr] = useState<string | null>(null);
 
   async function submit() {
@@ -160,6 +164,7 @@ function ExpenseModal({ expense, onClose }: { expense: Expense | null; onClose: 
         id: expense?.id,
         date, category, description: description.trim(), amountCents: cents,
         method: method || undefined, vendor: vendor || undefined, reference: reference || undefined,
+        receiptPath: receiptPath || undefined,
       });
       onClose();
     } catch {
@@ -208,6 +213,13 @@ function ExpenseModal({ expense, onClose }: { expense: Expense | null; onClose: 
           <div>
             <label className="label">Reference / receipt no. (optional)</label>
             <input className="input" value={reference} onChange={(e) => setReference(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Receipt photo (optional)</label>
+            <div className="flex items-center gap-3">
+              <FileUpload kind="expense-receipt" label="Attach receipt" onUploaded={setReceiptPath} />
+              {receiptPath && <ProofLink path={receiptPath} label="View" />}
+            </div>
           </div>
           {err && <p className="text-sm text-bad">{err}</p>}
           <div className="flex gap-2 pt-1">
