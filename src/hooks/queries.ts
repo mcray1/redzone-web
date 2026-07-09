@@ -403,6 +403,17 @@ export interface BillingRunResult {
   overdueMarked?: number;
 }
 
+export interface Attention {
+  pendingAdvances: number; pendingRemittances: number;
+  openTickets: number; scheduledJobs: number; overdueInvoices: number;
+}
+export function useAttention() {
+  return useQuery({
+    queryKey: ['attention'],
+    queryFn: async () => (await api.get<Attention>('/stats/attention')).data,
+  });
+}
+
 // Preview this month's billing without writing anything (owner/admin).
 export function useBillingPreview() {
   return useMutation({

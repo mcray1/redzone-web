@@ -1,7 +1,41 @@
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
-import { useOwnerStats } from '../../hooks/queries';
+import { useOwnerStats, useAttention } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
+
+function NeedsAttention() {
+  const { data } = useAttention();
+  const nav = useNavigate();
+  if (!data) return null;
+
+  const items = [
+    { n: data.pendingAdvances, label: 'advance request', to: '/owner/payroll' },
+    { n: data.pendingRemittances, label: 'remittance to verify', to: '/owner/billing' },
+    { n: data.overdueInvoices, label: 'overdue invoice', to: '/owner/billing' },
+    { n: data.openTickets, label: 'open ticket', to: '/owner/tickets' },
+    { n: data.scheduledJobs, label: 'scheduled job', to: '/owner/installations' },
+  ].filter((i) => i.n > 0);
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Needs attention</h2>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm text-ink/40">You're all caught up. 🎉</p>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {items.map((i) => (
+            <button key={i.label} onClick={() => nav(i.to)}
+              className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm hover:bg-paper">
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-signal/15 px-1.5 text-xs font-700 text-signal-600">{i.n}</span>
+              {i.label}{i.n === 1 ? '' : 's'}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
@@ -39,6 +73,8 @@ export default function Dashboard() {
         <Stat label="Monthly revenue" value={peso(data.monthlyRevenue)} accent />
         <Stat label="Outstanding" value={peso(data.outstanding)} />
       </div>
+
+      <NeedsAttention />
 
       <div className="grid gap-5 lg:grid-cols-5">
         <div className="card p-5 lg:col-span-3">
