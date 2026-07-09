@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -17,7 +17,7 @@ export function useSubscriber(id: string | undefined) {
     queryKey: ['subscriber', id],
     enabled: !!id,
     queryFn: async () => {
-      const { data } = await api.get<Subscriber & { invoices: Invoice[]; payments: Payment[] }>(
+      const { data } = await api.get<Subscriber & { invoices: Invoice[]; payments: Payment[]; extensions: PaymentExtension[] }>(
         `/subscribers/${id}`
       );
       return data;
@@ -406,6 +406,7 @@ export interface BillingRunResult {
 export interface Attention {
   pendingAdvances: number; pendingRemittances: number;
   openTickets: number; scheduledJobs: number; overdueInvoices: number;
+  pendingExtensions: number; pendingExpenses: number;
 }
 export function useAttention() {
   return useQuery({
@@ -768,6 +769,38 @@ export function useCollectorPriority() {
   return useQuery({
     queryKey: ['collector-priority'],
     queryFn: async () => (await api.get<Array<{ id: string; fullName: string; accountNo: string; balanceCents: number; barangay: string | null; dueDay: number }>>('/collector/priority')).data,
+  });
+}
+
+// --- Payment extensions (promise-to-pay) ---
+export function useMyExtensions() {
+  return useQuery({
+    queryKey: ['my-extensions'],
+    queryFn: async () => (await api.get<PaymentExtension[]>('/extensions/me')).data,
+  });
+}
+export function useRequestExtension() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { requestedDate: string; reason?: string }) => (await api.post('/extensions/me', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-extensions'] }),
+  });
+}
+export function useExtensions(status?: string) {
+  return useQuery({
+    queryKey: ['extensions', status],
+    queryFn: async () => (await api.get<PaymentExtension[]>('/extensions', { params: status ? { status } : {} })).data,
+  });
+}
+export function useDecideExtension() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; status: 'APPROVED' | 'REJECTED' }) =>
+      (await api.post(`/extensions/${p.id}/decision`, { status: p.status })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['extensions'] });
+      qc.invalidateQueries({ queryKey: ['attention'] });
+    },
   });
 }
 

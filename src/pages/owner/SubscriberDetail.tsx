@@ -46,6 +46,15 @@ export default function SubscriberDetail() {
           <Field label="Municipality" value={s.municipality ?? '—'} />
         </div>
 
+        {(() => {
+          const ext = s.extensions?.find((e) => e.status === 'APPROVED');
+          return ext ? (
+            <p className="mt-4 rounded-lg bg-good/10 px-3 py-2 text-sm text-good">
+              Payment extension approved — until {new Date(ext.approvedDate || ext.requestedDate).toLocaleDateString('en-PH')}
+            </p>
+          ) : null;
+        })()}
+
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
           <StatusControl id={s.id} current={s.status} />
         </div>

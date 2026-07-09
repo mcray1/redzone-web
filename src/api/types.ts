@@ -76,6 +76,18 @@ export interface Expense {
   submittedRole?: Role | null;
 }
 
+export type ExtensionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export interface PaymentExtension {
+  id: string;
+  subscriberId: string;
+  requestedDate: string;
+  approvedDate?: string | null;
+  reason?: string | null;
+  status: ExtensionStatus;
+  createdAt: string;
+  subscriber?: { id: string; fullName: string; accountNo: string; balanceCents: number };
+}
+
 export interface AuditEntry {
   id: string;
   action: string;

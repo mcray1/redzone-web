@@ -10,6 +10,8 @@ function NeedsAttention() {
   if (!data) return null;
 
   const items = [
+    { n: data.pendingExtensions, label: 'payment extension', to: '/owner/billing' },
+    { n: data.pendingExpenses, label: 'expense request', to: '/owner/expenses' },
     { n: data.pendingAdvances, label: 'advance request', to: '/owner/payroll' },
     { n: data.pendingRemittances, label: 'remittance to verify', to: '/owner/billing' },
     { n: data.overdueInvoices, label: 'overdue invoice', to: '/owner/billing' },

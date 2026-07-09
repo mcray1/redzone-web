@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMyAccount, useTickets, useCreateTicket } from '../../hooks/queries';
+import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
@@ -90,6 +90,9 @@ export default function Portal() {
               )}
             </div>
 
+            {/* Payment extension */}
+            <PortalExtension hasBalance={s.balanceCents > 0} />
+
             {/* Payment history */}
             <div className="card p-5">
               <h2 className="font-display font-600">Recent payments</h2>
@@ -117,6 +120,62 @@ export default function Portal() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function PortalExtension({ hasBalance }: { hasBalance: boolean }) {
+  const { data: exts } = useMyExtensions();
+  const request = useRequestExtension();
+  const [date, setDate] = useState('');
+  const [reason, setReason] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const pending = exts?.find((e) => e.status === 'PENDING');
+  const approved = exts?.find((e) => e.status === 'APPROVED');
+
+  async function submit() {
+    setErr(null);
+    setMsg(null);
+    if (!date) { setErr('Pick a date you can pay by.'); return; }
+    try {
+      await request.mutateAsync({ requestedDate: date, reason: reason || undefined });
+      setMsg("Request sent. We'll review it shortly.");
+      setDate('');
+      setReason('');
+    } catch (e: unknown) {
+      const m = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErr(m || 'Could not send the request.');
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Payment extension</h2>
+      {approved && (
+        <p className="mt-1 text-sm text-good">
+          Approved — you have until {new Date(approved.approvedDate || approved.requestedDate).toLocaleDateString('en-PH')} to pay.
+        </p>
+      )}
+      {pending ? (
+        <p className="mt-2 text-sm text-warn">
+          Request pending — until {new Date(pending.requestedDate).toLocaleDateString('en-PH')}.
+        </p>
+      ) : hasBalance ? (
+        <div className="mt-3 space-y-2">
+          <p className="text-sm text-ink/50">Need a little more time? Tell us when you can pay.</p>
+          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <input className="input" placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          {err && <p className="text-sm text-bad">{err}</p>}
+          {msg && <p className="text-sm text-good">{msg}</p>}
+          <button className="btn-primary w-full" disabled={request.isPending} onClick={submit}>
+            {request.isPending ? 'Sending…' : 'Request extension'}
+          </button>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-ink/40">You're paid up — no extension needed.</p>
+      )}
     </div>
   );
 }
