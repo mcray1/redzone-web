@@ -11,6 +11,19 @@ function apiError(err: unknown, fallback: string) {
   return e?.response?.data?.error || fallback;
 }
 
+// Best-effort GPS grab. Resolves null if unsupported, denied, or timed out —
+// never throws, so it can't block a submission.
+function requestGps(): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (!('geolocation' in navigator)) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+    );
+  });
+}
+
 export default function Register() {
   const { data: plans } = usePublicPlans();
   const submit = useSubmitRegistration();
@@ -23,9 +36,24 @@ export default function Register() {
   const [sitio, setSitio] = useState('');
   const [address, setAddress] = useState('');
   const [servicePlanId, setServicePlanId] = useState('');
+  const [estimatedClients, setEstimatedClients] = useState('');
   const [notes, setNotes] = useState('');
+  const [type, setType] = useState<'PLAN' | 'VENDO'>('PLAN');
+  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  const isVendo = type === 'VENDO';
+
+  async function pinLocation() {
+    setGeoBusy(true); setGeoMsg(null);
+    const c = await requestGps();
+    setGeoBusy(false);
+    if (c) { setGps(c); setGeoMsg('Location pinned ✓'); }
+    else setGeoMsg('Could not get your location — you can still submit.');
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,8 +62,16 @@ export default function Register() {
       setError('Please enter your name and mobile number.');
       return;
     }
+    if (isVendo) {
+      if (!municipality || !barangay) { setError('Please choose the municipality and barangay for the vendo.'); return; }
+      if (!address.trim()) { setError('Please add a landmark so we can find the exact spot.'); return; }
+    }
+    // Grab GPS one more time if not pinned yet — best-effort, never blocks.
+    let coords = gps;
+    if (!coords) coords = await requestGps();
     try {
       await submit.mutateAsync({
+        type,
         fullName: fullName.trim(),
         phone: phone.trim(),
         email: email.trim() || undefined,
@@ -43,7 +79,10 @@ export default function Register() {
         barangay: barangay || undefined,
         sitio: sitio || undefined,
         address: address || undefined,
-        servicePlanId: servicePlanId || undefined,
+        gpsLat: coords?.lat,
+        gpsLng: coords?.lng,
+        servicePlanId: isVendo ? undefined : (servicePlanId || undefined),
+        estimatedClients: isVendo && estimatedClients ? Number(estimatedClients) : undefined,
         notes: notes || undefined,
       });
       setDone(true);
@@ -74,12 +113,25 @@ export default function Register() {
     <div className="min-h-full bg-paper">
       <div className="mx-auto max-w-lg px-5 py-8">
         <Logo />
-        <h1 className="mt-6 font-display text-2xl font-700">Sign up for internet</h1>
+        <h1 className="mt-6 font-display text-2xl font-700">Sign up with RedZone</h1>
         <p className="mt-1 text-sm text-ink/60">
-          Fill this in and our team will reach out to check coverage in your area and set up your installation.
+          Fill this in and our team will reach out to check your area and set things up.
         </p>
 
-        <form onSubmit={onSubmit} className="mt-6 space-y-5">
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setType('PLAN')}
+            className={`rounded-xl border px-4 py-3 text-left ${!isVendo ? 'border-signal-600 bg-signal/5' : 'border-line'}`}>
+            <p className="font-600">Home internet</p>
+            <p className="text-xs text-ink/50">A plan for your household</p>
+          </button>
+          <button type="button" onClick={() => setType('VENDO')}
+            className={`rounded-xl border px-4 py-3 text-left ${isVendo ? 'border-signal-600 bg-signal/5' : 'border-line'}`}>
+            <p className="font-600">WiFi Vendo</p>
+            <p className="text-xs text-ink/50">Host a piso-WiFi machine</p>
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="mt-5 space-y-5">
           <div className="card space-y-3 p-5">
             <div>
               <label className="label">Full name *</label>
@@ -98,7 +150,7 @@ export default function Register() {
           </div>
 
           <div className="card space-y-3 p-5">
-            <p className="font-display font-600">Where should we install?</p>
+            <p className="font-display font-600">{isVendo ? 'Where will the vendo be?' : 'Where should we install?'}</p>
             <LocationSelect municipality={municipality} barangay={barangay} onMunicipality={setMunicipality} onBarangay={setBarangay} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -106,13 +158,28 @@ export default function Register() {
                 <input className="input" value={sitio} onChange={(e) => setSitio(e.target.value)} placeholder="e.g. Purok 3" />
               </div>
               <div>
-                <label className="label">House / landmark</label>
+                <label className="label">House / landmark{isVendo ? ' *' : ''}</label>
                 <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="near the chapel" />
               </div>
             </div>
+            {isVendo && (
+              <div>
+                <label className="label">Estimated number of clients <span className="font-400 text-ink/40">(optional)</span></label>
+                <input className="input" value={estimatedClients} onChange={(e) => setEstimatedClients(e.target.value.replace(/[^0-9]/g, ''))}
+                  inputMode="numeric" placeholder="e.g. how many people nearby could use it" />
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button type="button" onClick={pinLocation} disabled={geoBusy}
+                className={`pill border ${gps ? 'border-good text-good' : 'border-signal-600 text-signal-600'}`}>
+                {geoBusy ? 'Getting location…' : gps ? '📍 Location pinned' : '📍 Pin my current location'}
+              </button>
+              {geoMsg && <span className="text-xs text-ink/50">{geoMsg}</span>}
+            </div>
+            <p className="text-xs text-ink/40">Pinning helps our team find you faster. Please allow location access.</p>
           </div>
 
-          {plans && plans.length > 0 && (
+          {!isVendo && plans && plans.length > 0 && (
             <div className="card space-y-3 p-5">
               <p className="font-display font-600">Choose a plan <span className="font-400 text-ink/40">(optional)</span></p>
               <div className="grid gap-2">

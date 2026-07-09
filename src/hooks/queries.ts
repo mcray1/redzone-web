@@ -1026,8 +1026,10 @@ export function usePublicPlans() {
 export function useSubmitRegistration() {
   return useMutation({
     mutationFn: async (p: {
+      type?: 'PLAN' | 'VENDO';
       fullName: string; phone: string; email?: string; address?: string;
-      sitio?: string; barangay?: string; municipality?: string; servicePlanId?: string; notes?: string;
+      sitio?: string; barangay?: string; municipality?: string; servicePlanId?: string;
+      estimatedClients?: number; notes?: string; gpsLat?: number; gpsLng?: number;
     }) => (await api.post('/public/register', p)).data,
   });
 }

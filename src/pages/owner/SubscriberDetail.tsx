@@ -53,6 +53,11 @@ export default function SubscriberDetail() {
           <Field label="PPPoE username" value={s.pppoeUsername ?? '—'} />
         </div>
 
+        {s.gpsLat != null && s.gpsLng != null && (
+          <a href={`https://www.google.com/maps?q=${s.gpsLat},${s.gpsLng}`} target="_blank" rel="noreferrer"
+            className="mt-3 inline-block text-sm font-600 text-signal-600">📍 Open pinned location in Maps</a>
+        )}
+
         {(() => {
           const ext = s.extensions?.find((e) => e.status === 'APPROVED');
           return ext ? (

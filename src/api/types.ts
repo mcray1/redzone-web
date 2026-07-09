@@ -74,6 +74,8 @@ export interface Subscriber {
   sitio?: string | null;
   barangay?: string | null;
   municipality?: string | null;
+  gpsLat?: number | null;
+  gpsLng?: number | null;
   status: SubscriberStatus;
   servicePlan?: ServicePlan | null;
   balanceCents: number;
@@ -350,8 +352,11 @@ export interface Registration {
   sitio?: string | null;
   barangay?: string | null;
   municipality?: string | null;
+  gpsLat?: number | null;
+  gpsLng?: number | null;
   servicePlanId?: string | null;
   servicePlan?: { id: string; name: string; priceCents: number } | null;
+  estimatedClients?: number | null;
   notes?: string | null;
   rejectReason?: string | null;
   subscriberId?: string | null;

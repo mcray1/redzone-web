@@ -47,16 +47,27 @@ export default function Registrations() {
             <div key={r.id} className="card p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-display font-700">{r.fullName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-display font-700">{r.fullName}</p>
+                    <span className={`pill text-[10px] ${r.type === 'VENDO' ? 'bg-signal/15 text-signal-600' : 'bg-ink/10 text-ink/50'}`}>
+                      {r.type === 'VENDO' ? 'Vendo' : 'Plan'}
+                    </span>
+                  </div>
                   <p className="text-sm text-ink/60">{r.phone}{r.email ? ` · ${r.email}` : ''}</p>
                   <p className="mt-1 text-xs text-ink/50">
                     {[r.sitio, r.barangay, r.municipality].filter(Boolean).join(', ') || 'No address given'}
                     {r.address ? ` · ${r.address}` : ''}
                   </p>
                   <p className="mt-1 text-xs text-ink/50">
-                    Wants: <span className="font-600 text-ink/70">{r.servicePlan ? `${r.servicePlan.name} (${peso(r.servicePlan.priceCents)}/mo)` : 'No plan picked'}</span>
+                    {r.type === 'VENDO'
+                      ? <>Vendo site{r.estimatedClients != null ? <> · est. <span className="font-600 text-ink/70">{r.estimatedClients}</span> clients</> : ''}</>
+                      : <>Wants: <span className="font-600 text-ink/70">{r.servicePlan ? `${r.servicePlan.name} (${peso(r.servicePlan.priceCents)}/mo)` : 'No plan picked'}</span></>}
                     {' · '}{new Date(r.createdAt).toLocaleDateString('en-PH')}
                   </p>
+                  {r.gpsLat != null && r.gpsLng != null && (
+                    <a href={`https://www.google.com/maps?q=${r.gpsLat},${r.gpsLng}`} target="_blank" rel="noreferrer"
+                      className="mt-1 inline-block text-xs font-600 text-signal-600">📍 View pinned location</a>
+                  )}
                   {r.notes && <p className="mt-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink/60">“{r.notes}”</p>}
                   {r.status === 'REJECTED' && r.rejectReason && <p className="mt-2 text-xs text-bad">Rejected: {r.rejectReason}</p>}
                 </div>
@@ -131,15 +142,17 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
             <input className="input" value={accountNo} onChange={(e) => setAccountNo(e.target.value)} placeholder="e.g. RZ-0421" autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Plan</label>
-              <select className="input" value={servicePlanId} onChange={(e) => setServicePlanId(e.target.value)}>
-                <option value="">— None —</option>
-                {plans?.filter((p) => p.active !== false).map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} — {peso(p.priceCents)}</option>
-                ))}
-              </select>
-            </div>
+            {reg.type !== 'VENDO' && (
+              <div>
+                <label className="label">Plan</label>
+                <select className="input" value={servicePlanId} onChange={(e) => setServicePlanId(e.target.value)}>
+                  <option value="">— None —</option>
+                  {plans?.filter((p) => p.active !== false).map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} — {peso(p.priceCents)}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="label">Due day</label>
               <input className="input" type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
