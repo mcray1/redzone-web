@@ -4,18 +4,45 @@ import { useAuth } from '../../context/AuthContext';
 import { Logo } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
-const nav = [
-  { to: '/owner', label: 'Overview', end: true, icon: 'M3 12l9-9 9 9M5 10v10h14V10' },
-  { to: '/owner/subscribers', label: 'Subscribers', icon: 'M16 14a4 4 0 10-8 0M12 7a3 3 0 100 .01M2 21a8 8 0 0120 0' },
-  { to: '/owner/billing', label: 'Billing', icon: 'M3 6h18v12H3zM3 10h18' },
-  { to: '/owner/plans', label: 'Plans', icon: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
-  { to: '/owner/tickets', label: 'Tickets', icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z' },
-  { to: '/owner/installations', label: 'Installs', icon: 'M14 2l6 6-9 9H5v-6zM10 8l6 6' },
-  { to: '/owner/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 .01M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
-  { to: '/owner/payroll', label: 'Payroll', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
-  { to: '/owner/reports', label: 'Reports', icon: 'M9 17V9M15 17v-4M4 4h16v16H4zM4 8h16' },
-  { to: '/owner/expenses', label: 'Expenses', icon: 'M3 10h18M7 15h4M3 6h18v12H3zM3 6l0 4' },
+interface NavItem { to: string; label: string; end?: boolean; icon: string; }
+
+const OVERVIEW: NavItem = { to: '/owner', label: 'Overview', end: true, icon: 'M3 12l9-9 9 9M5 10v10h14V10' };
+
+const SECTIONS: { label: string | null; items: NavItem[] }[] = [
+  { label: null, items: [OVERVIEW] },
+  {
+    label: 'Operations',
+    items: [
+      { to: '/owner/subscribers', label: 'Subscribers', icon: 'M16 14a4 4 0 10-8 0M12 7a3 3 0 100 .01M2 21a8 8 0 0120 0' },
+      { to: '/owner/plans', label: 'Plans', icon: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z' },
+      { to: '/owner/installations', label: 'Installs', icon: 'M14 2l6 6-9 9H5v-6zM10 8l6 6' },
+      { to: '/owner/tickets', label: 'Tickets', icon: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z' },
+    ],
+  },
+  {
+    label: 'Money',
+    items: [
+      { to: '/owner/billing', label: 'Billing', icon: 'M3 6h18v12H3zM3 10h18' },
+      { to: '/owner/expenses', label: 'Expenses', icon: 'M3 10h18M7 15h4M3 6h18v12H3zM3 6l0 4' },
+      { to: '/owner/payroll', label: 'Payroll', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
+      { to: '/owner/reports', label: 'Reports', icon: 'M9 17V9M15 17v-4M4 4h16v16H4zM4 8h16' },
+    ],
+  },
+  {
+    label: 'Team',
+    items: [
+      { to: '/owner/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 .01M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
+    ],
+  },
 ];
+
+// Bottom-bar primaries on mobile; everything else lives under "More".
+const MOBILE_PRIMARY: NavItem[] = [
+  OVERVIEW,
+  SECTIONS[1].items[0], // Subscribers
+  { to: '/owner/billing', label: 'Billing', icon: 'M3 6h18v12H3zM3 10h18' },
+];
+const MORE_ICON = 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z';
 
 function Icon({ d }: { d: string }) {
   return (
@@ -30,21 +57,30 @@ export default function OwnerLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [pwOpen, setPwOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-500 ${
+      isActive ? 'bg-ink text-white' : 'text-ink/70 hover:bg-line/50'
+    }`;
 
   return (
     <div className="min-h-full md:flex">
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-white md:flex">
         <div className="px-5 py-5"><Logo /></div>
-        <nav className="flex-1 space-y-1 px-3">
-          {nav.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-500 ${
-                  isActive ? 'bg-ink text-white' : 'text-ink/70 hover:bg-line/50'
-                }`}>
-              <Icon d={n.icon} />{n.label}
-            </NavLink>
+        <nav className="flex-1 space-y-4 px-3">
+          {SECTIONS.map((sec, i) => (
+            <div key={i} className="space-y-1">
+              {sec.label && (
+                <p className="px-3 pt-2 text-[10px] font-700 uppercase tracking-wider text-ink/35">{sec.label}</p>
+              )}
+              {sec.items.map((n) => (
+                <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}>
+                  <Icon d={n.icon} />{n.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="border-t border-line p-3">
@@ -74,19 +110,49 @@ export default function OwnerLayout() {
         </main>
       </div>
 
-      {/* Mobile bottom nav — scrollable since there are many sections */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t border-line bg-white md:hidden"
+      {/* Mobile bottom nav — a few primaries + More */}
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-white md:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {nav.map((n) => (
+        {MOBILE_PRIMARY.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end}
             className={({ isActive }) =>
-              `flex min-w-[4.5rem] flex-1 shrink-0 flex-col items-center gap-1 py-2.5 text-[11px] font-600 ${
+              `flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-600 ${
                 isActive ? 'text-signal-600' : 'text-ink/50'
               }`}>
             <Icon d={n.icon} />{n.label}
           </NavLink>
         ))}
+        <button onClick={() => setMoreOpen(true)}
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-600 text-ink/50">
+          <Icon d={MORE_ICON} />More
+        </button>
       </nav>
+
+      {/* Mobile "More" sheet */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-30 flex flex-col justify-end bg-ink/40 md:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="rounded-t-2xl bg-white p-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+            {SECTIONS.map((sec, i) => (
+              <div key={i} className="mb-2">
+                {sec.label && <p className="px-1 pb-1 pt-2 text-[10px] font-700 uppercase tracking-wider text-ink/35">{sec.label}</p>}
+                <div className="grid grid-cols-2 gap-2">
+                  {sec.items.map((n) => (
+                    <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setMoreOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-500 ${
+                          isActive ? 'border-ink bg-ink text-white' : 'border-line text-ink/70'
+                        }`}>
+                      <Icon d={n.icon} />{n.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
     </div>
