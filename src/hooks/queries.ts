@@ -1107,7 +1107,7 @@ export function useApproveRegistration() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: {
-      id: string; accountNo: string; servicePlanId?: string | null; dueDay?: number;
+      id: string; accountNo?: string; servicePlanId?: string | null; dueDay?: number;
       fullName?: string; phone?: string; email?: string; address?: string; sitio?: string; barangay?: string; municipality?: string;
       loginEmail?: string; loginPassword?: string;
     }) => {
