@@ -250,6 +250,8 @@ export function useStaffScope(userId: string | undefined) {
       const { data } = await api.get<{
         municipalities: string[];
         barangays: string[];
+        techMunicipalities: string[];
+        techBarangays: string[];
         subscribers: Array<{ id: string; fullName: string; accountNo: string; municipality: string | null }>;
       }>(`/users/${userId}/scope`);
       return data;
@@ -262,6 +264,19 @@ export function useSetStaffMunicipalities() {
   return useMutation({
     mutationFn: async (p: { id: string; municipalities: string[] }) =>
       (await api.patch(`/users/${p.id}/municipalities`, { municipalities: p.municipalities })).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['staff-scope', v.id] });
+      qc.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+}
+
+// Technician-specific coverage (empty arrays = same as the collector area).
+export function useSetStaffTechCoverage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; techMunicipalities: string[]; techBarangays: string[] }) =>
+      (await api.patch(`/users/${p.id}/tech-coverage`, { techMunicipalities: p.techMunicipalities, techBarangays: p.techBarangays })).data,
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['staff-scope', v.id] });
       qc.invalidateQueries({ queryKey: ['staff'] });
