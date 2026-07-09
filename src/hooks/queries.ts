@@ -958,6 +958,16 @@ export function useCpeConfigured(enabled = true) {
   });
 }
 
+// All CPE devices, each joined to a subscriber by PPPoE username where possible.
+export function useCpeDevices(enabled = true) {
+  return useQuery({
+    queryKey: ['cpe-devices'],
+    enabled,
+    refetchInterval: 60_000,
+    queryFn: async () => (await api.get<CpeDevice[]>('/cpe/devices')).data,
+  });
+}
+
 // The CPE device for one subscriber (matched by PPPoE username).
 export function useCpeForSubscriber(subscriberId: string | undefined, enabled = true) {
   return useQuery({
