@@ -978,18 +978,37 @@ export function useCpeForSubscriber(subscriberId: string | undefined, enabled = 
   });
 }
 
-function useCpeAction<T>(path: (id: string) => string) {
+export function useRebootCpe() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { subscriberId: string } & T) => {
-      const { subscriberId, ...body } = p as { subscriberId: string } & Record<string, unknown>;
-      return (await api.post(path(subscriberId), body)).data;
-    },
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', (v as { subscriberId: string }).subscriberId] }),
+    mutationFn: async (p: { subscriberId: string }) => (await api.post(`/cpe/subscriber/${p.subscriberId}/reboot`, {})).data,
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', v.subscriberId] }),
   });
 }
-
-export const useRebootCpe = () => useCpeAction<Record<string, never>>((id) => `/cpe/subscriber/${id}/reboot`);
-export const useRefreshCpe = () => useCpeAction<Record<string, never>>((id) => `/cpe/subscriber/${id}/refresh`);
-export const useSetCpeWifi = () => useCpeAction<{ ssid?: string; password?: string }>((id) => `/cpe/subscriber/${id}/wifi`);
-export const useSetCpePppoe = () => useCpeAction<{ username?: string; password?: string }>((id) => `/cpe/subscriber/${id}/pppoe`);
+export function useRefreshCpe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string }) => (await api.post(`/cpe/subscriber/${p.subscriberId}/refresh`, {})).data,
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', v.subscriberId] }),
+  });
+}
+export function useSetCpeWifi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; ssid?: string; password?: string }) => {
+      const { subscriberId, ...body } = p;
+      return (await api.post(`/cpe/subscriber/${subscriberId}/wifi`, body)).data;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', v.subscriberId] }),
+  });
+}
+export function useSetCpePppoe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; username?: string; password?: string }) => {
+      const { subscriberId, ...body } = p;
+      return (await api.post(`/cpe/subscriber/${subscriberId}/pppoe`, body)).data;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['cpe-subscriber', v.subscriberId] }),
+  });
+}
