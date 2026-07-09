@@ -45,6 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function hasPerm(key: PermissionKey) {
+    // Owner and admin always hold every capability — including any new one or
+    // anything assigned to a custom role — by virtue of their role, regardless
+    // of what the (possibly older) stored permissions list contains.
+    const roles = user?.roles ?? (user?.role ? [user.role] : []);
+    if (roles.includes('OWNER') || roles.includes('ADMIN')) return true;
     const perms = user?.permissions ?? [];
     return perms.includes('*') || perms.includes(key);
   }
