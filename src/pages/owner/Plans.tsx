@@ -52,7 +52,7 @@ export default function Plans() {
   );
 }
 
-interface PlanForm { name: string; pricePeso: number; downMbps: number; upMbps: number; }
+interface PlanForm { name: string; pricePeso: number; downMbps: number; upMbps: number; graceDays?: number; lateFeePeso?: number; }
 
 function PlanModal({ plan, onClose }: { plan: ServicePlan | null; onClose: () => void }) {
   const save = useSavePlan();
@@ -64,8 +64,10 @@ function PlanModal({ plan, onClose }: { plan: ServicePlan | null; onClose: () =>
           pricePeso: plan.priceCents / 100,
           downMbps: Math.round(plan.downloadKbps / 1024),
           upMbps: Math.round(plan.uploadKbps / 1024),
+          graceDays: plan.graceDays ?? 0,
+          lateFeePeso: (plan.lateFeeCents ?? 0) / 100,
         }
-      : { name: '', pricePeso: undefined, downMbps: undefined, upMbps: undefined },
+      : { name: '', pricePeso: undefined, downMbps: undefined, upMbps: undefined, graceDays: 0, lateFeePeso: 0 },
   });
 
   async function submit(v: PlanForm) {
@@ -75,6 +77,8 @@ function PlanModal({ plan, onClose }: { plan: ServicePlan | null; onClose: () =>
       priceCents: Math.round(Number(v.pricePeso) * 100),
       downloadKbps: Math.round(Number(v.downMbps) * 1024),
       uploadKbps: Math.round(Number(v.upMbps) * 1024),
+      graceDays: Math.round(Number(v.graceDays || 0)),
+      lateFeeCents: Math.round(Number(v.lateFeePeso || 0) * 100),
     });
     onClose();
   }
@@ -112,6 +116,17 @@ function PlanModal({ plan, onClose }: { plan: ServicePlan | null; onClose: () =>
               <input className="input" type="number" min="0" {...register('upMbps', { required: true })} />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Grace days</label>
+              <input className="input" type="number" min="0" max="90" {...register('graceDays')} />
+            </div>
+            <div>
+              <label className="label">Late fee (₱)</label>
+              <input className="input" type="number" step="0.01" min="0" {...register('lateFeePeso')} />
+            </div>
+          </div>
+          <p className="-mt-1 text-xs text-ink/40">Late fee applies only to subscribers you switch it on for.</p>
           <div className="flex gap-2 pt-1">
             {plan && (
               <button type="button" className="btn-ghost text-bad" onClick={remove} disabled={del.isPending}>

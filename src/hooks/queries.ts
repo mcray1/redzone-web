@@ -434,6 +434,19 @@ export function useRunBilling() {
   });
 }
 
+// Generate a prorated first bill (owner/admin). Returns the computation.
+export function useProrate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (subscriberId: string) =>
+      (await api.post<{ fullCents: number; daysInMonth: number; daysCharged: number; proratedCents: number }>(`/billing/subscribers/${subscriberId}/prorate`)).data,
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: ['subscriber', id] });
+      qc.invalidateQueries({ queryKey: ['owner-stats'] });
+    },
+  });
+}
+
 // Edit a subscriber's everyday details (owner/admin).
 export function useUpdateSubscriber() {
   const qc = useQueryClient();

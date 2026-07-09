@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment } from '../../hooks/queries';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate } from '../../hooks/queries';
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
 import { LocationSelect } from '../../components/LocationSelect';
@@ -59,9 +59,10 @@ export default function SubscriberDetail() {
           <StatusControl id={s.id} current={s.status} />
         </div>
 
-        <button className="btn-primary mt-4 w-full md:w-auto" onClick={() => setPayOpen(true)}>
-          Record payment
-        </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="btn-primary" onClick={() => setPayOpen(true)}>Record payment</button>
+          <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />
+        </div>
       </div>
 
       <div className="card p-5">
@@ -189,7 +190,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 
 interface EditVals {
   fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
-  municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number;
+  municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number; lateFeeEnabled?: boolean;
 }
 
 function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
@@ -207,6 +208,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       barangay: sub.barangay ?? '',
       servicePlanId: sub.servicePlan?.id ?? '',
       dueDay: sub.dueDay,
+      lateFeeEnabled: sub.lateFeeEnabled ?? false,
     },
   });
   const municipality = watch('municipality') || '';
@@ -227,6 +229,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           barangay: v.barangay,
           servicePlanId: v.servicePlanId,
           dueDay: v.dueDay ? Number(v.dueDay) : undefined,
+          lateFeeEnabled: !!v.lateFeeEnabled,
         },
       });
       onClose();
@@ -285,6 +288,10 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
               ))}
             </select>
           </div>
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" {...register('lateFeeEnabled')} />
+            Charge late fees on this account
+          </label>
           {error && <p className="col-span-2 text-sm text-bad">{error}</p>}
           <div className="col-span-2 mt-2 flex gap-2">
             <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
@@ -294,6 +301,42 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function ProrateButton({ subscriberId, hasPlan }: { subscriberId: string; hasPlan: boolean }) {
+  const prorate = useProrate();
+  const [result, setResult] = useState<{ fullCents: number; daysInMonth: number; daysCharged: number; proratedCents: number } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!hasPlan) return null;
+
+  async function go() {
+    setErr(null);
+    if (!window.confirm('Create a prorated bill for this month (charging only the days left)?')) return;
+    try {
+      const r = await prorate.mutateAsync(subscriberId);
+      setResult(r);
+    } catch (e: unknown) {
+      const m = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErr(m || 'Could not create the prorated bill.');
+    }
+  }
+
+  if (result) {
+    return (
+      <p className="w-full text-sm text-good">
+        Prorated bill added: {peso(result.proratedCents)} ({result.daysCharged} of {result.daysInMonth} days of {peso(result.fullCents)}).
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      <button className="btn-ghost" onClick={go} disabled={prorate.isPending}>
+        {prorate.isPending ? 'Working…' : 'Prorated first bill'}
+      </button>
+      {err && <p className="text-xs text-bad">{err}</p>}
     </div>
   );
 }

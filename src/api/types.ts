@@ -17,6 +17,8 @@ export interface ServicePlan {
   priceCents: number;
   downloadKbps: number;
   uploadKbps: number;
+  graceDays?: number;
+  lateFeeCents?: number;
   active?: boolean;
 }
 
@@ -34,6 +36,7 @@ export interface Subscriber {
   servicePlan?: ServicePlan | null;
   balanceCents: number;
   dueDay: number;
+  lateFeeEnabled?: boolean;
   pppoeUsername?: string | null;
   loginUser?: { id: string; email: string; active: boolean } | null;
   createdAt: string;
