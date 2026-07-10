@@ -73,6 +73,8 @@ export interface Subscriber {
   accountNo: string;
   accountType?: AccountType;
   estimatedClients?: number | null;
+  vendoName?: string | null;
+  vendoNumber?: string | null;
   fullName: string;
   email?: string | null;
   phone?: string | null;
@@ -426,7 +428,9 @@ export interface VendoSummary {
   grossCents: number; netCents: number; expenseCents: number; profitCents: number; collections: number;
 }
 export interface VendoReportRow {
-  id: string; fullName: string; accountNo: string; municipality?: string | null; barangay?: string | null;
+  id: string; fullName: string; phone?: string | null; accountNo: string;
+  vendoName?: string | null; vendoNumber?: string | null;
+  municipality?: string | null; barangay?: string | null; sitio?: string | null;
   grossCents: number; netCents: number; expenseCents: number; profitCents: number;
 }
 

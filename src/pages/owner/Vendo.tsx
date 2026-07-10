@@ -11,8 +11,13 @@ function apiError(err: unknown, fallback: string) {
   return e?.response?.data?.error || fallback;
 }
 
+function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
 export default function Vendo() {
-  const { data, isLoading } = useVendoReport();
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const { data, isLoading } = useVendoReport({ from, to });
   const { hasPerm } = useAuth();
   const nav = useNavigate();
   const [coinsOpen, setCoinsOpen] = useState(false);
@@ -27,6 +32,19 @@ export default function Vendo() {
           <p className="text-sm text-ink/50">Coin income and expenses per WiFi vendo site. Kept separate from subscriber billing.</p>
         </div>
         {hasPerm('vendo.manage') && <button className="btn-ghost shrink-0" onClick={() => setCoinsOpen(true)}>Coin weights</button>}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label className="label">From</label>
+          <input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">To</label>
+          <input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
+        <button className="btn-ghost" onClick={() => { setFrom(monthStart()); setTo(todayStr()); }}>This month</button>
+        {(from || to) && <button className="btn-ghost text-ink/50" onClick={() => { setFrom(''); setTo(''); }}>All time</button>}
       </div>
 
       {isLoading ? <Spinner /> : (
@@ -46,8 +64,14 @@ export default function Vendo() {
                 <button key={r.id} onClick={() => nav(`/owner/subscribers/${r.id}`)}
                   className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-paper">
                   <div className="min-w-0">
-                    <p className="truncate font-600">{r.fullName}</p>
-                    <p className="truncate text-xs text-ink/50">{r.accountNo}{r.barangay ? ` · ${r.barangay}` : ''}{r.municipality ? `, ${r.municipality}` : ''}</p>
+                    <p className="truncate font-600">
+                      {r.vendoNumber && <span className="mr-1 text-signal-600">#{r.vendoNumber}</span>}
+                      {r.vendoName || r.fullName}
+                    </p>
+                    <p className="truncate text-xs text-ink/50">
+                      {[r.sitio, r.barangay, r.municipality].filter(Boolean).join(', ') || r.accountNo}
+                    </p>
+                    <p className="truncate text-xs text-ink/40">Host: {r.fullName}{r.phone ? ` · ${r.phone}` : ''}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="font-600 text-good">{peso(r.profitCents)}</p>

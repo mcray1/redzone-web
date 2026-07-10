@@ -54,6 +54,8 @@ export default function SubscriberDetail() {
           <Field label="Barangay" value={s.barangay ?? '—'} />
           <Field label="Municipality" value={s.municipality ?? '—'} />
           <Field label="PPPoE username" value={s.pppoeUsername ?? '—'} />
+          {s.accountType === 'VENDO' && <Field label="Vendo no." value={s.vendoNumber ?? '—'} />}
+          {s.accountType === 'VENDO' && <Field label="Vendo name" value={s.vendoName ?? '—'} />}
           {s.accountType === 'VENDO' && (
             <Field label="Est. clients" value={s.estimatedClients != null ? String(s.estimatedClients) : '—'} />
           )}
@@ -220,7 +222,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 interface EditVals {
   fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
   municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number; lateFeeEnabled?: boolean;
-  billingExempt?: boolean; pppoeUsername?: string;
+  billingExempt?: boolean; pppoeUsername?: string; vendoName?: string; vendoNumber?: string; estimatedClients?: number;
 }
 
 function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
@@ -241,8 +243,12 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       lateFeeEnabled: sub.lateFeeEnabled ?? false,
       billingExempt: sub.billingExempt ?? false,
       pppoeUsername: sub.pppoeUsername ?? '',
+      vendoName: sub.vendoName ?? '',
+      vendoNumber: sub.vendoNumber ?? '',
+      estimatedClients: sub.estimatedClients ?? undefined,
     },
   });
+  const isVendo = sub.accountType === 'VENDO';
   const municipality = watch('municipality') || '';
   const barangay = watch('barangay') || '';
 
@@ -264,6 +270,9 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           lateFeeEnabled: !!v.lateFeeEnabled,
           billingExempt: !!v.billingExempt,
           pppoeUsername: v.pppoeUsername,
+          vendoName: isVendo ? v.vendoName : undefined,
+          vendoNumber: isVendo ? v.vendoNumber : undefined,
+          estimatedClients: isVendo && v.estimatedClients !== undefined && `${v.estimatedClients}` !== '' ? Number(v.estimatedClients) : undefined,
         },
       });
       onClose();
@@ -326,6 +335,24 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
             <label className="label">PPPoE username (links to the router account)</label>
             <input className="input" {...register('pppoeUsername')} placeholder="e.g. juan_delacruz" />
           </div>
+
+          {isVendo && (
+            <>
+              <div>
+                <label className="label">Vendo number</label>
+                <input className="input" {...register('vendoNumber')} placeholder="e.g. V-012" />
+              </div>
+              <div>
+                <label className="label">Vendo name</label>
+                <input className="input" {...register('vendoName')} placeholder="e.g. Sari-sari corner" />
+              </div>
+              <div className="col-span-2">
+                <label className="label">Estimated clients</label>
+                <input className="input" type="number" min={0} {...register('estimatedClients')} />
+              </div>
+            </>
+          )}
+
           <label className="col-span-2 flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4" {...register('lateFeeEnabled')} />
             Charge late fees on this account

@@ -1026,10 +1026,11 @@ export function useVendoSummary(subscriberId: string | undefined) {
     queryFn: async () => (await api.get<VendoSummary>(`/vendo/subscriber/${subscriberId}/summary`)).data,
   });
 }
-export function useVendoReport() {
+export function useVendoReport(range?: { from?: string; to?: string }) {
+  const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-report'],
-    queryFn: async () => (await api.get<{ rows: VendoReportRow[]; totals: Omit<VendoReportRow, 'id' | 'fullName' | 'accountNo' | 'municipality' | 'barangay'> }>('/vendo/report')).data,
+    queryKey: ['vendo-report', params],
+    queryFn: async () => (await api.get<{ rows: VendoReportRow[]; totals: { grossCents: number; netCents: number; expenseCents: number; profitCents: number } }>('/vendo/report', { params })).data,
   });
 }
 
