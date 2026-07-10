@@ -510,6 +510,24 @@ export function useRunBilling() {
   });
 }
 
+// One-time cleanup of invoice statuses (owner). Returns { checked, changed }.
+export function useReconcileInvoices() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await api.post<{ checked: number; changed: number }>('/billing/reconcile')).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner-stats'] }),
+  });
+}
+
+// Owner/admin clears a staff member's 2FA (lost phone + backup codes).
+export function useResetStaff2FA() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/users/${id}/reset-2fa`, {})).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }),
+  });
+}
+
 // Generate a prorated first bill (owner/admin). Returns the computation.
 export function useProrate() {
   const qc = useQueryClient();

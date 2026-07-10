@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOwnerStats, useBillingPreview, useRunBilling, useRemittances, useVerifyRemittance, useExtensions, useDecideExtension } from '../../hooks/queries';
+import { useOwnerStats, useBillingPreview, useRunBilling, useReconcileInvoices, useRemittances, useVerifyRemittance, useExtensions, useDecideExtension } from '../../hooks/queries';
 import type { BillingRunResult } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
@@ -223,6 +223,33 @@ function RunBillingPanel() {
       {(preview.isError || run.isError) && (
         <p className="mt-3 text-sm text-bad">Something went wrong. Please try again.</p>
       )}
+
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
+        <p className="text-xs text-ink/40">Auto-runs on day 1 each month. You can also run it manually above.</p>
+        <ReconcileButton />
+      </div>
+    </div>
+  );
+}
+
+// One-time cleanup for invoices left wrongly marked paid by the old partial-payment behaviour.
+function ReconcileButton() {
+  const reconcile = useReconcileInvoices();
+  const [msg, setMsg] = useState<string | null>(null);
+  async function go() {
+    if (!window.confirm('Recheck every invoice against its payments and fix any wrong statuses?')) return;
+    setMsg(null);
+    try {
+      const r = await reconcile.mutateAsync();
+      setMsg(r.changed > 0 ? `Fixed ${r.changed} of ${r.checked}.` : `All ${r.checked} correct.`);
+    } catch { setMsg('Could not run.'); }
+  }
+  return (
+    <div className="shrink-0 text-right">
+      <button className="text-xs font-600 text-signal-600" onClick={go} disabled={reconcile.isPending}>
+        {reconcile.isPending ? 'Checking…' : 'Fix invoice statuses'}
+      </button>
+      {msg && <p className="text-[11px] text-ink/50">{msg}</p>}
     </div>
   );
 }

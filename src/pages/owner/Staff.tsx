@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useStaff, useCreateStaff, useSetStaffActive, useSetStaffRoles, useCustomRoles, useSetStaffCustomRole } from '../../hooks/queries';
+import { useStaff, useCreateStaff, useSetStaffActive, useSetStaffRoles, useCustomRoles, useSetStaffCustomRole, useResetStaff2FA } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import type { StaffUser } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
@@ -11,6 +11,7 @@ export default function Staff() {
   const isAdmin = (user?.roles ?? [user?.role]).some((r) => r === 'OWNER' || r === 'ADMIN');
   const { data: staff, isLoading } = useStaff();
   const setActive = useSetStaffActive();
+  const reset2fa = useResetStaff2FA();
   const [showAdd, setShowAdd] = useState(false);
   const [scopeUserId, setScopeUserId] = useState<string | null>(null);
   const [rolesUser, setRolesUser] = useState<StaffUser | null>(null);
@@ -52,6 +53,13 @@ export default function Staff() {
                   {isAdmin && (
                     <button onClick={() => setMgrUser(u)} className="text-sm font-600 text-signal-600">
                       Manager access
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => { if (window.confirm(`Reset two-factor for ${u.name}? They'll sign in with just their password until they set it up again.`)) reset2fa.mutate(u.id); }}
+                      className="text-sm font-600 text-ink/50">
+                      Reset 2FA
                     </button>
                   )}
                   <button onClick={() => setScopeUserId(u.id)} className="text-sm font-600 text-signal-600">
