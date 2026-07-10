@@ -12,14 +12,18 @@ function apiError(err: unknown, fallback: string) {
   return e?.response?.data?.error || fallback;
 }
 function today() { return new Date().toISOString().slice(0, 10); }
+function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
 
 export function VendoPanel({ subscriberId }: { subscriberId: string }) {
   const { hasPerm } = useAuth();
   const canView = hasPerm('vendo.view') || hasPerm('vendo.manage');
   const canManage = hasPerm('vendo.manage');
-  const { data: summary } = useVendoSummary(canView ? subscriberId : undefined);
-  const { data: collections } = useVendoCollections(canView ? subscriberId : undefined);
-  const { data: expenses } = useVendoExpenses(canView ? subscriberId : undefined);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const range = { from, to };
+  const { data: summary } = useVendoSummary(canView ? subscriberId : undefined, range);
+  const { data: collections } = useVendoCollections(canView ? subscriberId : undefined, range);
+  const { data: expenses } = useVendoExpenses(canView ? subscriberId : undefined, range);
   const [collectOpen, setCollectOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
 
@@ -35,6 +39,14 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
             <button className="btn-primary text-sm" onClick={() => setCollectOpen(true)}>Record collection</button>
           </div>
         )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <input className="input h-9 w-auto py-1" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <span className="text-ink/30">–</span>
+        <input className="input h-9 w-auto py-1" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <button className="pill border border-line text-ink/60" onClick={() => { setFrom(monthStart()); setTo(today()); }}>This month</button>
+        {(from || to) && <button className="pill border border-line text-ink/40" onClick={() => { setFrom(''); setTo(''); }}>All time</button>}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">

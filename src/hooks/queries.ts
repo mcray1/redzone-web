@@ -977,11 +977,12 @@ export function useCalibrateCoin() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
   });
 }
-export function useVendoCollections(subscriberId: string | undefined) {
+export function useVendoCollections(subscriberId: string | undefined, range?: { from?: string; to?: string }) {
+  const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-collections', subscriberId],
+    queryKey: ['vendo-collections', subscriberId, params],
     enabled: !!subscriberId,
-    queryFn: async () => (await api.get<VendoCollection[]>(`/vendo/subscriber/${subscriberId}/collections`)).data,
+    queryFn: async () => (await api.get<VendoCollection[]>(`/vendo/subscriber/${subscriberId}/collections`, { params })).data,
   });
 }
 export function useRecordCollection() {
@@ -998,11 +999,12 @@ export function useRecordCollection() {
     },
   });
 }
-export function useVendoExpenses(subscriberId: string | undefined) {
+export function useVendoExpenses(subscriberId: string | undefined, range?: { from?: string; to?: string }) {
+  const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-expenses', subscriberId],
+    queryKey: ['vendo-expenses', subscriberId, params],
     enabled: !!subscriberId,
-    queryFn: async () => (await api.get<VendoExpense[]>(`/vendo/subscriber/${subscriberId}/expenses`)).data,
+    queryFn: async () => (await api.get<VendoExpense[]>(`/vendo/subscriber/${subscriberId}/expenses`, { params })).data,
   });
 }
 export function useRecordVendoExpense() {
@@ -1019,11 +1021,12 @@ export function useRecordVendoExpense() {
     },
   });
 }
-export function useVendoSummary(subscriberId: string | undefined) {
+export function useVendoSummary(subscriberId: string | undefined, range?: { from?: string; to?: string }) {
+  const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-summary', subscriberId],
+    queryKey: ['vendo-summary', subscriberId, params],
     enabled: !!subscriberId,
-    queryFn: async () => (await api.get<VendoSummary>(`/vendo/subscriber/${subscriberId}/summary`)).data,
+    queryFn: async () => (await api.get<VendoSummary>(`/vendo/subscriber/${subscriberId}/summary`, { params })).data,
   });
 }
 export function useVendoReport(range?: { from?: string; to?: string }) {
