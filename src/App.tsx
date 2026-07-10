@@ -21,6 +21,7 @@ import Audit from './pages/owner/Audit';
 import Inventory from './pages/owner/Inventory';
 import Network from './pages/owner/Network';
 import Devices from './pages/owner/Devices';
+import Vendo from './pages/owner/Vendo';
 import Portal from './pages/portal/Portal';
 import Register from './pages/Register';
 import Registrations from './pages/owner/Registrations';
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="inventory" element={<Inventory />} />
           <Route path="network" element={<Network />} />
           <Route path="devices" element={<Devices />} />
+          <Route path="vendo" element={<Vendo />} />
         </Route>
 
         <Route path="/collector" element={<Protected roles={['COLLECTOR']}><Collector /></Protected>} />

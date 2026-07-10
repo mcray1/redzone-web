@@ -22,6 +22,8 @@ export type PermissionKey =
   | 'routers.manage'
   | 'cpe.view'
   | 'cpe.manage'
+  | 'vendo.view'
+  | 'vendo.manage'
   | 'coverage.assign'
   | 'reports.view'
   | 'payroll.view'
@@ -384,6 +386,48 @@ export interface CpeDevice {
   lastInform?: string | null;
   online: boolean;
   subscriber?: { id: string; fullName: string; accountNo: string; pppoeUsername?: string | null } | null;
+}
+
+// --- Vendo (coin income + expenses) ---
+export interface VendoCoinType {
+  id: string;
+  key: string;
+  label: string;
+  faceCents: number;
+  gramsPerCoin: number;
+  sortOrder: number;
+}
+export interface VendoCollectionLine {
+  key: string; label: string; faceCents: number; gramsPerCoin: number;
+  grams: number | null; count: number; valueCents: number;
+}
+export interface VendoCollection {
+  id: string;
+  subscriberId: string;
+  date: string;
+  lines: VendoCollectionLine[];
+  grossCents: number;
+  deductionPct: number;
+  deductionCents: number;
+  netCents: number;
+  note?: string | null;
+  createdAt: string;
+}
+export interface VendoExpense {
+  id: string;
+  subscriberId: string;
+  date: string;
+  category: string;
+  description: string;
+  amountCents: number;
+  createdAt: string;
+}
+export interface VendoSummary {
+  grossCents: number; netCents: number; expenseCents: number; profitCents: number; collections: number;
+}
+export interface VendoReportRow {
+  id: string; fullName: string; accountNo: string; municipality?: string | null; barangay?: string | null;
+  grossCents: number; netCents: number; expenseCents: number; profitCents: number;
 }
 
 // --- Network monitoring ---

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; type?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -956,6 +956,80 @@ export function useNetworkSetup(enabled = true) {
     queryKey: ['network-setup'],
     enabled,
     queryFn: async () => (await api.get<{ configured: boolean; reportUrl: string; token: string }>('/network/setup')).data,
+  });
+}
+
+// --- Vendo ---
+export function useVendoCoinTypes() {
+  return useQuery({ queryKey: ['vendo-coins'], queryFn: async () => (await api.get<VendoCoinType[]>('/vendo/coin-types')).data });
+}
+export function useSetCoinWeight() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; gramsPerCoin: number }) => (await api.patch(`/vendo/coin-types/${p.id}`, { gramsPerCoin: p.gramsPerCoin })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
+  });
+}
+export function useCalibrateCoin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; count: number; totalGrams: number }) => (await api.post(`/vendo/coin-types/${p.id}/calibrate`, { count: p.count, totalGrams: p.totalGrams })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
+  });
+}
+export function useVendoCollections(subscriberId: string | undefined) {
+  return useQuery({
+    queryKey: ['vendo-collections', subscriberId],
+    enabled: !!subscriberId,
+    queryFn: async () => (await api.get<VendoCollection[]>(`/vendo/subscriber/${subscriberId}/collections`)).data,
+  });
+}
+export function useRecordCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; date: string; deductionPct: number; note?: string; lines: Array<{ key: string; grams?: number; count?: number }> }) => {
+      const { subscriberId, ...body } = p;
+      return (await api.post(`/vendo/subscriber/${subscriberId}/collections`, body)).data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['vendo-collections', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-report'] });
+    },
+  });
+}
+export function useVendoExpenses(subscriberId: string | undefined) {
+  return useQuery({
+    queryKey: ['vendo-expenses', subscriberId],
+    enabled: !!subscriberId,
+    queryFn: async () => (await api.get<VendoExpense[]>(`/vendo/subscriber/${subscriberId}/expenses`)).data,
+  });
+}
+export function useRecordVendoExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; date: string; category: string; description: string; amountCents: number }) => {
+      const { subscriberId, ...body } = p;
+      return (await api.post(`/vendo/subscriber/${subscriberId}/expenses`, body)).data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['vendo-expenses', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-report'] });
+    },
+  });
+}
+export function useVendoSummary(subscriberId: string | undefined) {
+  return useQuery({
+    queryKey: ['vendo-summary', subscriberId],
+    enabled: !!subscriberId,
+    queryFn: async () => (await api.get<VendoSummary>(`/vendo/subscriber/${subscriberId}/summary`)).data,
+  });
+}
+export function useVendoReport() {
+  return useQuery({
+    queryKey: ['vendo-report'],
+    queryFn: async () => (await api.get<{ rows: VendoReportRow[]; totals: Omit<VendoReportRow, 'id' | 'fullName' | 'accountNo' | 'municipality' | 'barangay'> }>('/vendo/report')).data,
   });
 }
 

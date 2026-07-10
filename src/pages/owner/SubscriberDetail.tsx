@@ -10,6 +10,7 @@ import { FileUpload } from '../../components/FileUpload';
 import { ProofLink } from '../../components/ProofLink';
 import { CpePanel } from '../../components/CpePanel';
 import { MapThumbnail } from '../../components/MapThumbnail';
+import { VendoPanel } from '../../components/VendoPanel';
 
 export default function SubscriberDetail() {
   const { id } = useParams();
@@ -110,6 +111,9 @@ export default function SubscriberDetail() {
           <p className="mt-3 text-sm text-ink/40">No payments recorded yet.</p>
         )}
       </div>
+
+      {/* Vendo income & expenses — only for vendo sites */}
+      {s.accountType === 'VENDO' && <VendoPanel subscriberId={s.id} />}
 
       {/* Customer equipment (GenieACS) — renders only when the integration is on */}
       <CpePanel subscriberId={s.id} />
