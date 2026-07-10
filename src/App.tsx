@@ -22,6 +22,7 @@ import Inventory from './pages/owner/Inventory';
 import Network from './pages/owner/Network';
 import Devices from './pages/owner/Devices';
 import Vendo from './pages/owner/Vendo';
+import Disconnections from './pages/owner/Disconnections';
 import Portal from './pages/portal/Portal';
 import Register from './pages/Register';
 import Registrations from './pages/owner/Registrations';
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="installations" element={<Installations />} />
           <Route path="payroll" element={<Payroll />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="disconnections" element={<Disconnections />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="audit" element={<Audit />} />
           <Route path="inventory" element={<Inventory />} />

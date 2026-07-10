@@ -368,6 +368,7 @@ export function useSetSubscriberStatus() {
       qc.invalidateQueries({ queryKey: ['subscriber', v.id] });
       qc.invalidateQueries({ queryKey: ['subscribers'] });
       qc.invalidateQueries({ queryKey: ['owner-stats'] });
+      qc.invalidateQueries({ queryKey: ['report-disconnect'] });
     },
   });
 }
@@ -774,6 +775,44 @@ export function useOutstandingReport() {
   return useQuery({
     queryKey: ['report-outstanding'],
     queryFn: async () => (await api.get<OutstandingReport>('/reports/outstanding')).data,
+  });
+}
+
+// --- A/R aging ---
+export interface AgingRow {
+  id: string; accountNo: string; subscriber: string; phone: string; plan: string;
+  status: string; municipality: string; barangay: string; balanceCents: number; daysOverdue: number; bucket: string;
+}
+export interface AgingReport {
+  rows: AgingRow[];
+  buckets: { current: number; d1_30: number; d31_60: number; d60plus: number };
+  totalCents: number; count: number;
+}
+export function useAgingReport() {
+  return useQuery({
+    queryKey: ['report-aging'],
+    queryFn: async () => (await api.get<AgingReport>('/reports/aging')).data,
+  });
+}
+
+// --- For disconnection ---
+export interface DisconnectRow {
+  id: string; accountNo: string; subscriber: string; phone: string; plan: string;
+  municipality: string; barangay: string; balanceCents: number; daysOverdue: number; graceDays: number;
+}
+export function useForDisconnection() {
+  return useQuery({
+    queryKey: ['report-disconnect'],
+    queryFn: async () => (await api.get<{ rows: DisconnectRow[]; totalCents: number; count: number }>('/reports/for-disconnection')).data,
+  });
+}
+
+// --- Collector performance ---
+export interface CollectorRow { collectorId: string | null; name: string; totalCents: number; count: number; }
+export function useCollectorReport(from: string, to: string) {
+  return useQuery({
+    queryKey: ['report-collectors', from, to],
+    queryFn: async () => (await api.get<{ rows: CollectorRow[]; totalCents: number; count: number }>('/reports/collectors', { params: { from, to } })).data,
   });
 }
 

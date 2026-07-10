@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useCollectionsReport, useOutstandingReport, fetchSubscriberReport } from '../../hooks/queries';
+import { useCollectionsReport, useOutstandingReport, useAgingReport, useCollectorReport, fetchSubscriberReport } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { toCsv, downloadCsv, todayStamp, type CsvColumn } from '../../lib/csv';
 import { Spinner } from '../../components/ui';
 
 const pesoNum = (cents: number) => (cents / 100).toFixed(2);
+function monthStartStamp() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
 
 export default function Reports() {
   return (
@@ -14,8 +15,110 @@ export default function Reports() {
         <p className="text-sm text-ink/50">View on screen or download as CSV (opens in Excel).</p>
       </div>
       <CollectionsCard />
+      <CollectorsCard />
+      <AgingCard />
       <OutstandingCard />
       <SubscriberExportCard />
+    </div>
+  );
+}
+
+function CollectorsCard() {
+  const [from, setFrom] = useState(monthStartStamp());
+  const [to, setTo] = useState(todayStamp());
+  const { data, isLoading } = useCollectorReport(from, to);
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Collector performance</h2>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <div><label className="label">From</label><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+        <div><label className="label">To</label><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+      </div>
+      {isLoading ? <div className="mt-4"><Spinner /></div> : data && (
+        <>
+          <div className="mt-4 font-display text-xl font-700">{peso(data.totalCents)} <span className="text-sm font-400 text-ink/50">collected</span></div>
+          <div className="mt-3 max-h-72 overflow-y-auto">
+            {data.rows.length === 0 ? <p className="text-sm text-ink/40">No collections in this range.</p> : (
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs text-ink/40"><th className="py-1">Collector</th><th className="text-right">Payments</th><th className="text-right">Total</th></tr></thead>
+                <tbody>
+                  {data.rows.map((r) => (
+                    <tr key={r.collectorId ?? 'office'} className="border-t border-line">
+                      <td className="py-1.5 font-600">{r.name}</td>
+                      <td className="text-right text-ink/50">{r.count}</td>
+                      <td className="text-right font-600">{peso(r.totalCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AgingCard() {
+  const { data, isLoading } = useAgingReport();
+
+  function exportCsv() {
+    if (!data) return;
+    const cols: CsvColumn[] = [
+      { key: 'accountNo', label: 'Account' }, { key: 'subscriber', label: 'Subscriber' },
+      { key: 'phone', label: 'Phone' }, { key: 'barangay', label: 'Barangay' },
+      { key: 'daysOverdue', label: 'Days overdue' }, { key: 'bucket', label: 'Bucket' },
+      { key: 'balance', label: 'Balance' },
+    ];
+    const rows = data.rows.map((r) => ({ ...r, balance: pesoNum(r.balanceCents) }));
+    downloadCsv(`aging_${todayStamp()}.csv`, toCsv(rows, cols));
+  }
+
+  const b = data?.buckets;
+  return (
+    <div className="card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="font-display font-600">Receivables aging</h2>
+        <button className="btn-ghost shrink-0" onClick={exportCsv} disabled={!data || data.count === 0}>Download CSV</button>
+      </div>
+      {isLoading ? <div className="mt-4"><Spinner /></div> : b && (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Bucket label="Current" cents={b.current} />
+            <Bucket label="1–30 days" cents={b.d1_30} tone="warn" />
+            <Bucket label="31–60 days" cents={b.d31_60} tone="warn" />
+            <Bucket label="60+ days" cents={b.d60plus} tone="bad" />
+          </div>
+          <div className="mt-3 max-h-72 overflow-y-auto">
+            {data.rows.length === 0 ? <p className="text-sm text-ink/40">No receivables.</p> : (
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs text-ink/40"><th className="py-1">Account</th><th>Subscriber</th><th className="text-right">Overdue</th><th className="text-right">Balance</th></tr></thead>
+                <tbody>
+                  {data.rows.map((r) => (
+                    <tr key={r.id} className="border-t border-line">
+                      <td className="py-1.5 font-mono text-xs">{r.accountNo}</td>
+                      <td className="pr-2">{r.subscriber}</td>
+                      <td className={`text-right ${r.daysOverdue > 60 ? 'text-bad' : r.daysOverdue > 0 ? 'text-warn' : 'text-ink/40'}`}>{r.daysOverdue > 0 ? `${r.daysOverdue}d` : 'current'}</td>
+                      <td className="text-right font-600">{peso(r.balanceCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Bucket({ label, cents, tone }: { label: string; cents: number; tone?: 'warn' | 'bad' }) {
+  const color = tone === 'bad' ? 'text-bad' : tone === 'warn' ? 'text-warn' : 'text-ink';
+  return (
+    <div className="rounded-xl bg-paper px-3 py-2">
+      <p className="text-[11px] font-600 uppercase tracking-wide text-ink/40">{label}</p>
+      <p className={`mt-0.5 font-display text-lg font-700 ${color}`}>{peso(cents)}</p>
     </div>
   );
 }
