@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOwnerStats, useBillingPreview, useRunBilling, useReconcileInvoices, useRemittances, useVerifyRemittance, useExtensions, useDecideExtension } from '../../hooks/queries';
+import { useOwnerStats, useBillingPreview, useRunBilling, useReconcileInvoices, useSendReminders, useRemittances, useVerifyRemittance, useExtensions, useDecideExtension } from '../../hooks/queries';
 import type { BillingRunResult } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
@@ -224,10 +224,34 @@ function RunBillingPanel() {
         <p className="mt-3 text-sm text-bad">Something went wrong. Please try again.</p>
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
         <p className="text-xs text-ink/40">Auto-runs on day 1 each month. You can also run it manually above.</p>
-        <ReconcileButton />
+        <div className="flex items-center gap-4">
+          <RemindersButton />
+          <ReconcileButton />
+        </div>
       </div>
+    </div>
+  );
+}
+
+// Send due-soon / overdue reminder emails (also runs daily on its own).
+function RemindersButton() {
+  const send = useSendReminders();
+  const [msg, setMsg] = useState<string | null>(null);
+  async function go() {
+    setMsg(null);
+    try {
+      const r = await send.mutateAsync();
+      setMsg(!r.configured ? 'Email isn\'t set up yet.' : r.sent > 0 ? `Sent ${r.sent} reminder${r.sent === 1 ? '' : 's'}.` : 'No reminders due right now.');
+    } catch { setMsg('Could not send.'); }
+  }
+  return (
+    <div className="shrink-0 text-right">
+      <button className="text-xs font-600 text-signal-600" onClick={go} disabled={send.isPending}>
+        {send.isPending ? 'Sending…' : 'Send reminders now'}
+      </button>
+      {msg && <p className="text-[11px] text-ink/50">{msg}</p>}
     </div>
   );
 }

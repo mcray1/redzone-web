@@ -520,6 +520,13 @@ export function useReconcileInvoices() {
   });
 }
 
+// Send payment reminder emails now (owner). Also runs daily automatically.
+export function useSendReminders() {
+  return useMutation({
+    mutationFn: async () => (await api.post<{ configured: boolean; sent: number; skipped: number }>('/billing/reminders/run')).data,
+  });
+}
+
 // Owner/admin clears a staff member's 2FA (lost phone + backup codes).
 export function useResetStaff2FA() {
   const qc = useQueryClient();
