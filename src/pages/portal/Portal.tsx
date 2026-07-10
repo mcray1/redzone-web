@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration } from '../../hooks/queries';
+import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
@@ -88,6 +88,9 @@ export default function Portal() {
 
             {/* Payment extension */}
             <PortalExtension hasBalance={s.balanceCents > 0} />
+
+            {/* Discount request */}
+            <PortalDiscount hasBalance={s.balanceCents > 0} />
 
             {/* Payment history */}
             <div className="card p-5">
@@ -204,6 +207,56 @@ function PortalExtension({ hasBalance }: { hasBalance: boolean }) {
         </div>
       ) : (
         <p className="mt-2 text-sm text-ink/40">You're paid up — no extension needed.</p>
+      )}
+    </div>
+  );
+}
+
+function PortalDiscount({ hasBalance }: { hasBalance: boolean }) {
+  const { data: mine } = useMyDiscounts();
+  const request = useRequestDiscount();
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const pending = mine?.find((d) => d.status === 'PENDING');
+  const lastDecided = mine?.find((d) => d.status !== 'PENDING');
+
+  async function submit() {
+    setErr(null); setMsg(null);
+    const amountCents = Math.round(Number(amount) * 100);
+    if (!amountCents) { setErr('Enter an amount.'); return; }
+    try {
+      await request.mutateAsync({ amountCents, reason: reason || undefined });
+      setMsg('Request sent. We\'ll review it.'); setAmount(''); setReason('');
+    } catch (e: unknown) {
+      setErr((e as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Could not send.');
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Request a discount</h2>
+      {pending ? (
+        <p className="mt-2 text-sm text-warn">A discount request of {peso(pending.amountCents)} is pending review.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {lastDecided && (
+            <p className={`text-sm ${lastDecided.status === 'APPROVED' ? 'text-good' : 'text-ink/50'}`}>
+              Last request: {lastDecided.status.toLowerCase()}{lastDecided.decisionNote ? ` — ${lastDecided.decisionNote}` : ''}.
+            </p>
+          )}
+          <p className="text-sm text-ink/50">Ask for a discount on your bill (e.g. downtime, senior/PWD). Staff will review it.</p>
+          <input className="input" inputMode="decimal" placeholder="Amount (₱)" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} />
+          <input className="input" placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+          {err && <p className="text-sm text-bad">{err}</p>}
+          {msg && <p className="text-sm text-good">{msg}</p>}
+          <button className="btn-primary w-full" disabled={request.isPending || !hasBalance} onClick={submit}>
+            {request.isPending ? 'Sending…' : 'Request discount'}
+          </button>
+          {!hasBalance && <p className="text-xs text-ink/40">You have no balance to discount right now.</p>}
+        </div>
       )}
     </div>
   );

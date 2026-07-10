@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOwnerStats, useBillingPreview, useRunBilling, useReconcileInvoices, useSendReminders, useRemittances, useVerifyRemittance, useExtensions, useDecideExtension } from '../../hooks/queries';
+import { useOwnerStats, useBillingPreview, useRunBilling, useReconcileInvoices, useSendReminders, useRemittances, useVerifyRemittance, useExtensions, useDecideExtension, useDiscounts, useDecideDiscount } from '../../hooks/queries';
 import type { BillingRunResult } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
@@ -37,6 +37,7 @@ export default function Billing() {
       {user?.role === 'OWNER' && <RunBillingPanel />}
 
       {hasPerm('extensions.approve') && <ExtensionsPanel />}
+      {hasPerm('discounts.approve') && <DiscountsPanel />}
       {hasPerm('remittances.verify') && <RemittancesPanel />}
 
       {canViewReports && (
@@ -62,6 +63,39 @@ export default function Billing() {
           </div>
         )
       )}
+    </div>
+  );
+}
+
+/** Discount requests (from a customer or collector) awaiting a decision. */
+function DiscountsPanel() {
+  const { data } = useDiscounts('PENDING');
+  const decide = useDecideDiscount();
+  if (!data || data.length === 0) return null;
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Discount requests</h2>
+      <ul className="mt-3 divide-y divide-line">
+        {data.map((d) => (
+          <li key={d.id} className="flex items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <p className="truncate font-600">{d.subscriber?.fullName} — {peso(d.amountCents)} off</p>
+              <p className="text-xs text-ink/50">
+                {d.subscriber ? `balance ${peso(d.subscriber.balanceCents)}` : ''}
+                {d.requestedByRole ? ` · by ${d.requestedByRole.toLowerCase()}` : ''}
+                {d.reason ? ` · ${d.reason}` : ''}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button className="btn-ghost text-bad" disabled={decide.isPending}
+                onClick={() => decide.mutate({ id: d.id, status: 'REJECTED' })}>Reject</button>
+              <button className="btn-primary" disabled={decide.isPending}
+                onClick={() => decide.mutate({ id: d.id, status: 'APPROVED' })}>Approve</button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

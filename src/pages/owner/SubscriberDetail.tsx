@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate } from '../../hooks/queries';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate, useRequestDiscountForSub } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
@@ -20,6 +20,7 @@ export default function SubscriberDetail() {
   const [payOpen, setPayOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
 
   if (isLoading || !s) return <Spinner />;
 
@@ -85,6 +86,7 @@ export default function SubscriberDetail() {
         <div className="mt-4 flex flex-wrap gap-2">
           <button className="btn-primary" onClick={() => setPayOpen(true)}>Record payment</button>
           {hasPerm('billing.prorate') && <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />}
+          <button className="btn-ghost" onClick={() => setDiscountOpen(true)}>Request discount</button>
         </div>
       </div>
 
@@ -141,6 +143,7 @@ export default function SubscriberDetail() {
 
       {editOpen && <EditSubscriberModal sub={s} onClose={() => setEditOpen(false)} />}
       {payOpen && <PaymentModal subscriberId={s.id} balanceCents={s.balanceCents} onClose={() => setPayOpen(false)} />}
+      {discountOpen && <DiscountRequestModal subscriberId={s.id} onClose={() => setDiscountOpen(false)} />}
       {loginOpen && (
         <CustomerLoginModal
           subscriberId={s.id}
@@ -149,6 +152,59 @@ export default function SubscriberDetail() {
           onClose={() => setLoginOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+function DiscountRequestModal({ subscriberId, onClose }: { subscriberId: string; onClose: () => void }) {
+  const request = useRequestDiscountForSub();
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  async function submit() {
+    setErr(null);
+    const amountCents = Math.round(Number(amount) * 100);
+    if (!amountCents || amountCents <= 0) { setErr('Enter the discount amount.'); return; }
+    try {
+      await request.mutateAsync({ subscriberId, amountCents, reason: reason.trim() || undefined });
+      setOk(true);
+    } catch (e: unknown) {
+      setErr((e as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Could not send the request.');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="font-display text-lg font-700">Request discount</h2>
+        {ok ? (
+          <>
+            <p className="mt-3 text-sm text-good">Request sent for approval.</p>
+            <button className="btn-primary mt-4 w-full" onClick={onClose}>Done</button>
+          </>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <p className="text-sm text-ink/50">Goes to an owner/admin for approval. Once approved, the amount is knocked off the balance.</p>
+            <div>
+              <label className="label">Discount amount (₱)</label>
+              <input className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} />
+            </div>
+            <div>
+              <label className="label">Reason</label>
+              <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. downtime, senior/PWD, promo" />
+            </div>
+            {err && <p className="text-sm text-bad">{err}</p>}
+            <div className="flex gap-2">
+              <button className="btn-ghost flex-1" onClick={onClose}>Cancel</button>
+              <button className="btn-primary flex-1" disabled={request.isPending} onClick={submit}>
+                {request.isPending ? 'Sending…' : 'Send request'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

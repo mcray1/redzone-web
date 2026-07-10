@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; type?: string; take?: number; skip?: number }) {
   return useQuery({
@@ -483,7 +483,7 @@ export interface BillingRunResult {
 export interface Attention {
   pendingAdvances: number; pendingRemittances: number;
   openTickets: number; scheduledJobs: number; overdueInvoices: number;
-  pendingExtensions: number; pendingExpenses: number; pendingRegistrations: number; pendingResets: number;
+  pendingExtensions: number; pendingExpenses: number; pendingRegistrations: number; pendingResets: number; pendingDiscounts: number;
 }
 export function useAttention() {
   return useQuery({
@@ -956,6 +956,45 @@ export function useDecideExtension() {
       qc.invalidateQueries({ queryKey: ['extensions'] });
       qc.invalidateQueries({ queryKey: ['attention'] });
     },
+  });
+}
+
+// --- Discount requests ---
+export function useDiscounts(status?: string) {
+  return useQuery({
+    queryKey: ['discounts', status],
+    queryFn: async () => (await api.get<DiscountRequest[]>('/discounts', { params: status ? { status } : {} })).data,
+  });
+}
+export function useDecideDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; status: 'APPROVED' | 'REJECTED'; note?: string }) =>
+      (await api.post(`/discounts/${p.id}/decision`, { status: p.status, note: p.note })).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['discounts'] });
+      qc.invalidateQueries({ queryKey: ['attention'] });
+      qc.invalidateQueries({ queryKey: ['subscribers'] });
+    },
+  });
+}
+// Customer: their own discount requests + request one.
+export function useMyDiscounts() {
+  return useQuery({ queryKey: ['my-discounts'], queryFn: async () => (await api.get<DiscountRequest[]>('/discounts/me')).data });
+}
+export function useRequestDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { amountCents: number; reason?: string }) => (await api.post('/discounts/me', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-discounts'] }),
+  });
+}
+// Staff/collector: request a discount for a subscriber.
+export function useRequestDiscountForSub() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; amountCents: number; reason?: string }) => (await api.post('/discounts', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attention'] }),
   });
 }
 

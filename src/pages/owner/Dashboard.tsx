@@ -14,6 +14,7 @@ function NeedsAttention() {
     { n: data.pendingRegistrations, label: 'new registration', to: '/owner/registrations' },
     { n: data.pendingResets, label: 'password reset', to: '/owner/password-resets' },
     { n: data.pendingExtensions, label: 'payment extension', to: '/owner/billing' },
+    { n: data.pendingDiscounts, label: 'discount request', to: '/owner/billing' },
     { n: data.pendingExpenses, label: 'expense request', to: '/owner/expenses' },
     { n: data.pendingAdvances, label: 'advance request', to: '/owner/payroll' },
     { n: data.pendingRemittances, label: 'remittance to verify', to: '/owner/billing' },

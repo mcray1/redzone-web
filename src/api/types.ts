@@ -11,6 +11,7 @@ export type PermissionKey =
   | 'billing.prorate'
   | 'remittances.verify'
   | 'extensions.approve'
+  | 'discounts.approve'
   | 'expenses.approve'
   | 'plans.manage'
   | 'jobs.manage'
@@ -141,6 +142,20 @@ export interface PaymentExtension {
   reason?: string | null;
   status: ExtensionStatus;
   createdAt: string;
+  subscriber?: { id: string; fullName: string; accountNo: string; balanceCents: number };
+}
+
+export type DiscountStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export interface DiscountRequest {
+  id: string;
+  subscriberId: string;
+  amountCents: number;
+  reason?: string | null;
+  status: DiscountStatus;
+  requestedByRole?: string | null;
+  decisionNote?: string | null;
+  createdAt: string;
+  decidedAt?: string | null;
   subscriber?: { id: string; fullName: string; accountNo: string; balanceCents: number };
 }
 
