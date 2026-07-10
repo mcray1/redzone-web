@@ -8,47 +8,57 @@ function apiError(err: unknown, fallback: string) {
 }
 
 /**
- * Two-factor (authenticator app) setup for the signed-in user. Enable: start
- * setup → add the key to Google Authenticator/Authy → confirm a code. Disable:
- * confirm a current code.
+ * Two-factor (authenticator app) setup for the signed-in user, with one-time
+ * recovery codes so a lost phone doesn't mean a lockout.
  */
 export function TwoFactorModal({ onClose }: { onClose: () => void }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [secret, setSecret] = useState<string | null>(null); // shown during setup
+  const [remaining, setRemaining] = useState(0);
+  const [secret, setSecret] = useState<string | null>(null);   // shown during setup
+  const [recovery, setRecovery] = useState<string[] | null>(null); // shown once
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get('/auth/2fa').then((r) => setEnabled(r.data.enabled)).catch(() => setEnabled(false));
+    api.get('/auth/2fa').then((r) => { setEnabled(r.data.enabled); setRemaining(r.data.recoveryRemaining ?? 0); }).catch(() => setEnabled(false));
   }, []);
 
   async function startSetup() {
     setErr(null); setBusy(true);
-    try {
-      const { data } = await api.post('/auth/2fa/setup');
-      setSecret(data.secret);
-    } catch (e) { setErr(apiError(e, 'Could not start setup.')); }
+    try { const { data } = await api.post('/auth/2fa/setup'); setSecret(data.secret); }
+    catch (e) { setErr(apiError(e, 'Could not start setup.')); }
     finally { setBusy(false); }
   }
 
   async function confirmEnable() {
     setErr(null); setBusy(true);
     try {
-      await api.post('/auth/2fa/enable', { code: code.trim() });
-      setEnabled(true); setSecret(null); setCode(''); setMsg('Two-factor is now on.');
+      const { data } = await api.post('/auth/2fa/enable', { code: code.trim() });
+      setEnabled(true); setSecret(null); setCode('');
+      setRecovery(data.recoveryCodes || []); setRemaining((data.recoveryCodes || []).length);
+    } catch (e) { setErr(apiError(e, 'That code is wrong or expired.')); }
+    finally { setBusy(false); }
+  }
+
+  async function regenerate() {
+    setErr(null); setBusy(true);
+    try {
+      const { data } = await api.post('/auth/2fa/recovery-codes', { code: code.trim() });
+      setCode(''); setRecovery(data.recoveryCodes || []); setRemaining((data.recoveryCodes || []).length);
     } catch (e) { setErr(apiError(e, 'That code is wrong or expired.')); }
     finally { setBusy(false); }
   }
 
   async function disable() {
     setErr(null); setBusy(true);
-    try {
-      await api.post('/auth/2fa/disable', { code: code.trim() });
-      setEnabled(false); setCode(''); setMsg('Two-factor turned off.');
-    } catch (e) { setErr(apiError(e, 'That code is wrong or expired.')); }
+    try { await api.post('/auth/2fa/disable', { code: code.trim() }); setEnabled(false); setCode(''); setRemaining(0); }
+    catch (e) { setErr(apiError(e, 'That code is wrong or expired.')); }
     finally { setBusy(false); }
+  }
+
+  function copyCodes() {
+    if (recovery) navigator.clipboard?.writeText(recovery.join('\n')).catch(() => {});
   }
 
   const codeInput = (
@@ -58,20 +68,32 @@ export function TwoFactorModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-display text-lg font-700">Two-factor authentication</h2>
 
-        {enabled === null ? (
+        {recovery ? (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm text-good">✓ Two-factor is on. Save these <span className="font-600">backup codes</span> somewhere safe — each works once if you lose your phone.</p>
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-paper p-3 font-mono text-sm">
+              {recovery.map((c) => <span key={c} className="text-center">{c}</span>)}
+            </div>
+            <button className="btn-ghost w-full" onClick={copyCodes}>Copy codes</button>
+            <button className="btn-primary w-full" onClick={() => setRecovery(null)}>I've saved them</button>
+          </div>
+        ) : enabled === null ? (
           <p className="mt-3 text-sm text-ink/50">Loading…</p>
         ) : enabled ? (
           <div className="mt-3 space-y-3">
-            <p className="text-sm text-good">✓ Two-factor is ON. You'll enter a code from your app at each sign-in.</p>
-            <p className="text-sm text-ink/60">To turn it off, enter a current code:</p>
+            <p className="text-sm text-good">✓ Two-factor is ON. You'll enter a code at each sign-in.</p>
+            <p className="text-xs text-ink/50">Backup codes remaining: <span className="font-600">{remaining}</span></p>
+            <p className="text-sm text-ink/60">Enter a current code to make a change:</p>
             {codeInput}
             {err && <p className="text-sm text-bad">{err}</p>}
-            {msg && <p className="text-sm text-good">{msg}</p>}
+            <button className="btn-ghost w-full" disabled={busy || code.length < 6} onClick={regenerate}>
+              {busy ? 'Working…' : 'Regenerate backup codes'}
+            </button>
             <button className="btn-ghost w-full text-bad" disabled={busy || code.length < 6} onClick={disable}>
-              {busy ? 'Working…' : 'Turn off two-factor'}
+              Turn off two-factor
             </button>
           </div>
         ) : secret ? (
@@ -90,7 +112,6 @@ export function TwoFactorModal({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="mt-3 space-y-3">
             <p className="text-sm text-ink/60">Add a second step at sign-in using an authenticator app (Google Authenticator, Authy). Recommended for owner/admin accounts.</p>
-            {msg && <p className="text-sm text-good">{msg}</p>}
             {err && <p className="text-sm text-bad">{err}</p>}
             <button className="btn-primary w-full" disabled={busy} onClick={startSetup}>
               {busy ? 'Starting…' : 'Set up two-factor'}
@@ -98,7 +119,7 @@ export function TwoFactorModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <button className="btn-ghost mt-3 w-full" onClick={onClose}>Close</button>
+        {!recovery && <button className="btn-ghost mt-3 w-full" onClick={onClose}>Close</button>}
       </div>
     </div>
   );

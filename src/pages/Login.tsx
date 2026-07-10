@@ -61,14 +61,14 @@ export default function Login() {
           </h1>
           {mfaToken ? (
             <>
-              <p className="mt-2 text-white/60">Enter the 6-digit code from your authenticator app.</p>
+              <p className="mt-2 text-white/60">Enter the 6-digit code from your authenticator app — or a backup code if you don't have your phone.</p>
               <form onSubmit={onVerify} className="mt-8 space-y-4">
                 <div>
                   <label className="label text-white/50">Authentication code</label>
                   <input
-                    className="input bg-ink-700 border-ink-600 text-center text-2xl tracking-[0.4em] text-white placeholder:text-white/20"
-                    inputMode="numeric" autoFocus maxLength={6} placeholder="123456"
-                    value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="input bg-ink-700 border-ink-600 text-center text-xl tracking-[0.3em] text-white placeholder:text-white/20"
+                    autoFocus maxLength={14} placeholder="123456"
+                    value={code} onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9-]/g, ''))}
                   />
                 </div>
                 {error && <p className="text-sm text-signal-300">{error}</p>}
