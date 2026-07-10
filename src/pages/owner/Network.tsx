@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNetwork, useSubscribers, useUpdateSubscriber, useNetworkSetup } from '../../hooks/queries';
+import { useNetwork, useSubscribers, useUpdateSubscriber, useNetworkSetup, useRemoveNetworkNode } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import type { NetworkNode } from '../../api/types';
 import { Spinner } from '../../components/ui';
@@ -45,7 +45,7 @@ export default function Network() {
         </div>
       ) : (
         <div className="space-y-3">
-          {data.map((n) => <NodeCard key={n.id} node={n} />)}
+          {data.map((n) => <NodeCard key={n.id} node={n} canManage={hasPerm('routers.manage')} />)}
         </div>
       )}
     </div>
@@ -160,10 +160,18 @@ function bar(pct: number | null | undefined) {
   );
 }
 
-function NodeCard({ node }: { node: NetworkNode }) {
+function NodeCard({ node, canManage }: { node: NetworkNode; canManage: boolean }) {
   const [open, setOpen] = useState(false);
   const [linking, setLinking] = useState<string | null>(null);
+  const remove = useRemoveNetworkNode();
   const last = node.lastReportAt ? new Date(node.lastReportAt).toLocaleString('en-PH') : '—';
+
+  function onRemove() {
+    const warn = node.online
+      ? `"${node.name}" is still online — if the router keeps running the report script it will reappear in a minute. Remove the card anyway?`
+      : `Remove "${node.name}" from the list?`;
+    if (window.confirm(warn)) remove.mutate(node.id);
+  }
 
   return (
     <div className="card p-5">
@@ -172,9 +180,16 @@ function NodeCard({ node }: { node: NetworkNode }) {
           <p className="font-display font-700">{node.name}</p>
           <p className="text-xs text-ink/50">{node.host || '—'}{node.version ? ` · RouterOS ${node.version}` : ''} · up {node.uptime || '—'}</p>
         </div>
-        <span className={`pill ${node.online ? 'bg-good/10 text-good' : 'bg-bad/10 text-bad'}`}>
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />{node.online ? 'Online' : 'Offline'}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={`pill ${node.online ? 'bg-good/10 text-good' : 'bg-bad/10 text-bad'}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />{node.online ? 'Online' : 'Offline'}
+          </span>
+          {canManage && (
+            <button className="text-xs font-600 text-bad" onClick={onRemove} disabled={remove.isPending} title="Remove device">
+              Remove
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-4">

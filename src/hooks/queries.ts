@@ -942,6 +942,14 @@ export function useNetwork() {
   });
 }
 
+export function useRemoveNetworkNode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/network/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['network'] }),
+  });
+}
+
 // Setup details for wiring up a new reporting device.
 export function useNetworkSetup(enabled = true) {
   return useQuery({
