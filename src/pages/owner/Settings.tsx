@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useAppSettings, useUpdateAppSettings } from '../../hooks/queries';
 import { Spinner } from '../../components/ui';
 
@@ -33,8 +34,27 @@ export default function Settings() {
               busy={update.isPending}
               onChange={(v) => update.mutate({ discountByCustomer: v })}
             />
+            <MaxDiscount current={data.maxDiscountCents} busy={update.isPending} onSave={(cents) => update.mutate({ maxDiscountCents: cents })} />
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function MaxDiscount({ current, busy, onSave }: { current: number; busy: boolean; onSave: (cents: number) => void }) {
+  const [val, setVal] = useState('');
+  useEffect(() => { setVal(current > 0 ? String(current / 100) : ''); }, [current]);
+  const cents = Math.round(Number(val || 0) * 100);
+  const dirty = cents !== current;
+  return (
+    <div className="rounded-xl border border-line p-3">
+      <p className="font-600">Maximum discount per request</p>
+      <p className="text-xs text-ink/50">The most anyone can ask for in one request. Leave blank (or 0) for no limit.</p>
+      <div className="mt-2 flex gap-2">
+        <input className="input" inputMode="decimal" placeholder="No limit"
+          value={val} onChange={(e) => setVal(e.target.value.replace(/[^0-9.]/g, ''))} />
+        <button className="btn-primary shrink-0" disabled={busy || !dirty} onClick={() => onSave(cents)}>Save</button>
       </div>
     </div>
   );

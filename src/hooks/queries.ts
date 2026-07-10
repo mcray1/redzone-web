@@ -960,7 +960,7 @@ export function useDecideExtension() {
 }
 
 // --- App settings (owner/admin toggles) ---
-export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; }
+export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; }
 export function useAppSettings() {
   return useQuery({
     queryKey: ['app-settings'],
