@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import type { PermissionKey } from '../../api/types';
 import { Logo } from '../../components/ui';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+import { TwoFactorModal } from '../../components/TwoFactorModal';
 import { RoleSwitcher } from '../../components/RoleSwitcher';
 
 // `perm` — a manager sees the item if they hold ANY of these capabilities.
@@ -70,6 +71,7 @@ export default function OwnerLayout() {
   const { user, logout, hasPerm } = useAuth();
   const navigate = useNavigate();
   const [pwOpen, setPwOpen] = useState(false);
+  const [tfaOpen, setTfaOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Owners/admins see everything; a manager only sees items their role allows.
@@ -116,6 +118,8 @@ export default function OwnerLayout() {
           <div className="px-2 pt-2"><RoleSwitcher current="owner" tone="light" /></div>
           <button onClick={() => setPwOpen(true)}
             className="btn-ghost mt-2 w-full justify-start text-sm">Change password</button>
+          <button onClick={() => setTfaOpen(true)}
+            className="btn-ghost mt-1 w-full justify-start text-sm">Two-factor auth</button>
           <button onClick={() => { logout(); navigate('/login'); }}
             className="btn-ghost mt-1 w-full justify-start text-sm">Sign out</button>
         </div>
@@ -128,6 +132,7 @@ export default function OwnerLayout() {
           <Logo />
           <div className="flex items-center gap-3">
             <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-ink/60">Password</button>
+            <button onClick={() => setTfaOpen(true)} className="text-sm font-600 text-ink/60">2FA</button>
             <button onClick={() => { logout(); navigate('/login'); }}
               className="text-sm font-600 text-ink/60">Sign out</button>
           </div>
@@ -183,6 +188,7 @@ export default function OwnerLayout() {
       )}
 
       {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
+      {tfaOpen && <TwoFactorModal onClose={() => setTfaOpen(false)} />}
     </div>
   );
 }

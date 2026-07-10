@@ -1,0 +1,19 @@
+name: CI
+
+# Catch TypeScript/build errors BEFORE Render deploys — a failed build here means
+# a red X on the commit, instead of Render silently serving the previous bundle.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run build
