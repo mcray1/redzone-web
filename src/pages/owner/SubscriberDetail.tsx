@@ -279,7 +279,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 interface EditVals {
   fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
   municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number; lateFeeEnabled?: boolean;
-  billingExempt?: boolean; pppoeUsername?: string; vendoName?: string; vendoNumber?: string; estimatedClients?: number;
+  billingExempt?: boolean; pppoeUsername?: string; wifiSsid?: string; wifiPassword?: string; vendoName?: string; vendoNumber?: string; estimatedClients?: number;
 }
 
 function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
@@ -300,6 +300,8 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       lateFeeEnabled: sub.lateFeeEnabled ?? false,
       billingExempt: sub.billingExempt ?? false,
       pppoeUsername: sub.pppoeUsername ?? '',
+      wifiSsid: sub.wifiSsid ?? '',
+      wifiPassword: '',
       vendoName: sub.vendoName ?? '',
       vendoNumber: sub.vendoNumber ?? '',
       estimatedClients: sub.estimatedClients ?? undefined,
@@ -327,6 +329,8 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           lateFeeEnabled: !!v.lateFeeEnabled,
           billingExempt: !!v.billingExempt,
           pppoeUsername: v.pppoeUsername,
+          wifiSsid: v.wifiSsid,
+          ...(v.wifiPassword ? { wifiPassword: v.wifiPassword } : {}),
           vendoName: isVendo ? v.vendoName : undefined,
           vendoNumber: isVendo ? v.vendoNumber : undefined,
           estimatedClients: isVendo && v.estimatedClients !== undefined && `${v.estimatedClients}` !== '' ? Number(v.estimatedClients) : undefined,
@@ -391,6 +395,14 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           <div className="col-span-2">
             <label className="label">PPPoE username (links to the router account)</label>
             <input className="input" {...register('pppoeUsername')} placeholder="e.g. juan_delacruz" />
+          </div>
+          <div>
+            <label className="label">WiFi name</label>
+            <input className="input" {...register('wifiSsid')} placeholder="e.g. RedZone_Juan" />
+          </div>
+          <div>
+            <label className="label">WiFi password</label>
+            <input className="input" {...register('wifiPassword')} placeholder="leave blank to keep" />
           </div>
 
           {isVendo && (

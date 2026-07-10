@@ -38,6 +38,24 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      <div className="card p-5">
+        <h2 className="font-display font-600">Customer portal</h2>
+        <p className="mt-1 text-sm text-ink/50">What subscribers can see and do in their own portal.</p>
+        {isLoading || !data ? (
+          <div className="mt-4"><Spinner /></div>
+        ) : (
+          <div className="mt-4">
+            <Toggle
+              label="Show WiFi name & password"
+              hint="Lets customers view the WiFi credentials you recorded for them."
+              on={data.showWifiInPortal}
+              busy={update.isPending}
+              onChange={(v) => update.mutate({ showWifiInPortal: v })}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

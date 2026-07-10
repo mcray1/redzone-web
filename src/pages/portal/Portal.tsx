@@ -87,6 +87,9 @@ export default function Portal() {
               )}
             </div>
 
+            {/* WiFi credentials — only if recorded and enabled by the admin */}
+            {s.wifiSsid && <PortalWifi ssid={s.wifiSsid} password={s.wifiPassword ?? null} />}
+
             {/* Payment extension */}
             <PortalExtension hasBalance={s.balanceCents > 0} />
 
@@ -208,6 +211,44 @@ function PortalExtension({ hasBalance }: { hasBalance: boolean }) {
         </div>
       ) : (
         <p className="mt-2 text-sm text-ink/40">You're paid up — no extension needed.</p>
+      )}
+    </div>
+  );
+}
+
+function PortalWifi({ ssid, password }: { ssid: string; password: string | null }) {
+  const [show, setShow] = useState(false);
+  const [guide, setGuide] = useState(false);
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Your WiFi</h2>
+      <div className="mt-3 space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-ink/50">Network name</span>
+          <span className="font-600">{ssid}</span>
+        </div>
+        {password && (
+          <div className="flex items-center justify-between">
+            <span className="text-ink/50">Password</span>
+            <span className="flex items-center gap-2">
+              <span className="font-mono">{show ? password : '••••••••'}</span>
+              <button className="text-xs font-600 text-signal-600" onClick={() => setShow((v) => !v)}>{show ? 'Hide' : 'Show'}</button>
+            </span>
+          </div>
+        )}
+      </div>
+      <button className="mt-3 text-sm font-600 text-signal-600" onClick={() => setGuide((v) => !v)}>
+        {guide ? 'Hide' : 'How do I change my WiFi password?'}
+      </button>
+      {guide && (
+        <ol className="mt-2 space-y-1.5 rounded-lg bg-paper p-3 text-xs text-ink/70">
+          <li><b>1.</b> Connect to your WiFi (or plug a cable into your router).</li>
+          <li><b>2.</b> Open a browser and go to your router's address — usually <span className="font-mono">192.168.1.1</span> or <span className="font-mono">192.168.0.1</span>.</li>
+          <li><b>3.</b> Log in. The username/password are often on a sticker on the router.</li>
+          <li><b>4.</b> Open <b>Wireless</b> / <b>WiFi</b> settings and change the network name or password.</li>
+          <li><b>5.</b> Save, then reconnect your devices using the new password.</li>
+          <li className="text-ink/50">Stuck? Message RedZone support below and we'll guide you.</li>
+        </ol>
       )}
     </div>
   );
