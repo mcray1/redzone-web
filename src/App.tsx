@@ -23,6 +23,7 @@ import Network from './pages/owner/Network';
 import Devices from './pages/owner/Devices';
 import Vendo from './pages/owner/Vendo';
 import Disconnections from './pages/owner/Disconnections';
+import Settings from './pages/owner/Settings';
 import Portal from './pages/portal/Portal';
 import Register from './pages/Register';
 import Registrations from './pages/owner/Registrations';
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="tickets" element={<Tickets />} />
           <Route path="staff" element={<Staff />} />
           <Route path="roles" element={<Roles />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="installations" element={<Installations />} />
           <Route path="payroll" element={<Payroll />} />
           <Route path="reports" element={<Reports />} />

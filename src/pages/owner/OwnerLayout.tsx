@@ -46,6 +46,7 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: '/owner/staff', label: 'Staff', icon: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 .01M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75', perm: ['coverage.assign'] },
       { to: '/owner/password-resets', label: 'Password resets', icon: 'M12 15v2M7 11V7a5 5 0 0110 0v4M5 11h14v10H5z', perm: ['subscribers.login'] },
       { to: '/owner/roles', label: 'Roles', icon: 'M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z', adminOnly: true },
+      { to: '/owner/settings', label: 'Settings', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8', adminOnly: true },
       { to: '/owner/audit', label: 'Activity log', icon: 'M12 6v6l4 2M12 22a10 10 0 100-20 10 10 0 000 20', perm: ['audit.view'] },
     ],
   },

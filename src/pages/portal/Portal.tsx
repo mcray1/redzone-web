@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount } from '../../hooks/queries';
+import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount, useAppSettings } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
@@ -15,6 +15,7 @@ export default function Portal() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const { data: s, isLoading } = useMyAccount();
+  const { data: settings } = useAppSettings();
   const [pwOpen, setPwOpen] = useState(false);
 
   return (
@@ -89,8 +90,8 @@ export default function Portal() {
             {/* Payment extension */}
             <PortalExtension hasBalance={s.balanceCents > 0} />
 
-            {/* Discount request */}
-            <PortalDiscount hasBalance={s.balanceCents > 0} />
+            {/* Discount request — only if enabled by the admin */}
+            {settings?.discountByCustomer && <PortalDiscount hasBalance={s.balanceCents > 0} />}
 
             {/* Payment history */}
             <div className="card p-5">

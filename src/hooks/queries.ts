@@ -959,6 +959,23 @@ export function useDecideExtension() {
   });
 }
 
+// --- App settings (owner/admin toggles) ---
+export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; }
+export function useAppSettings() {
+  return useQuery({
+    queryKey: ['app-settings'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await api.get<AppSettings>('/settings')).data,
+  });
+}
+export function useUpdateAppSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: Partial<AppSettings>) => (await api.patch<AppSettings>('/settings', p)).data,
+    onSuccess: (d) => qc.setQueryData(['app-settings'], d),
+  });
+}
+
 // --- Discount requests ---
 export function useDiscounts(status?: string) {
   return useQuery({

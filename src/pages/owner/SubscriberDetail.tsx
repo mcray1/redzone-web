@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate, useRequestDiscountForSub } from '../../hooks/queries';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate, useRequestDiscountForSub, useAppSettings } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
@@ -17,6 +17,7 @@ export default function SubscriberDetail() {
   const nav = useNavigate();
   const { data: s, isLoading } = useSubscriber(id);
   const { hasPerm } = useAuth();
+  const { data: settings } = useAppSettings();
   const [payOpen, setPayOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -86,7 +87,7 @@ export default function SubscriberDetail() {
         <div className="mt-4 flex flex-wrap gap-2">
           <button className="btn-primary" onClick={() => setPayOpen(true)}>Record payment</button>
           {hasPerm('billing.prorate') && <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />}
-          <button className="btn-ghost" onClick={() => setDiscountOpen(true)}>Request discount</button>
+          {settings?.discountByCollector && <button className="btn-ghost" onClick={() => setDiscountOpen(true)}>Request discount</button>}
         </div>
       </div>
 
