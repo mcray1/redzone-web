@@ -14,14 +14,38 @@ const FILTERS: Array<{ key: string; label: string }> = [
   { key: 'SUSPENDED', label: 'Suspended' },
 ];
 
+// "Not connected recently" thresholds. Default (first real option) is 24 hours.
+const OFFLINE: Array<{ key: string; label: string }> = [
+  { key: '', label: 'Any activity' },
+  { key: '24', label: 'Offline ≥ 24 hours' },
+  { key: '72', label: 'Offline ≥ 3 days' },
+  { key: '168', label: 'Offline ≥ 7 days' },
+  { key: '720', label: 'Offline ≥ 30 days' },
+];
+
+// Turn a last-seen-online timestamp into a small, friendly label.
+function lastOnlineLabel(iso?: string | null): { text: string; tone: string } {
+  if (!iso) return { text: 'No online data yet', tone: 'text-ink/30' };
+  const hours = (Date.now() - new Date(iso).getTime()) / 3_600_000;
+  if (hours < 1) return { text: 'Online', tone: 'text-good' };
+  if (hours < 24) return { text: `Offline ${Math.floor(hours)}h`, tone: 'text-ink/50' };
+  return { text: `Offline ${Math.floor(hours / 24)}d`, tone: 'text-bad' };
+}
+
 export default function Subscribers() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [type, setType] = useState<'PLAN' | 'VENDO'>('PLAN');
+  const [offlineHours, setOfflineHours] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const nav = useNavigate();
   const { hasPerm } = useAuth();
-  const { data, isLoading } = useSubscribers({ q: q || undefined, status: status || undefined, type });
+  const { data, isLoading } = useSubscribers({
+    q: q || undefined,
+    status: status || undefined,
+    type,
+    offlineHours: offlineHours ? Number(offlineHours) : undefined,
+  });
 
   return (
     <div className="space-y-5">
@@ -55,6 +79,24 @@ export default function Subscribers() {
               }`}>{f.label}</button>
           ))}
         </div>
+        {type !== 'VENDO' && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-600 uppercase tracking-wide text-ink/40">Connection</label>
+              <select className="input w-auto" value={offlineHours} onChange={(e) => setOfflineHours(e.target.value)}>
+                {OFFLINE.map((o) => (
+                  <option key={o.key} value={o.key}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            {offlineHours && (
+              <p className="text-xs text-ink/40">
+                Based on live router reports. Until the MikroTik integration is running, no one is reported online,
+                so accounts with no data yet are counted as offline.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? <Spinner /> : !data?.items.length ? (
@@ -74,6 +116,10 @@ export default function Subscribers() {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
+                {type !== 'VENDO' && (() => {
+                  const o = lastOnlineLabel(s.lastOnlineAt);
+                  return <span className={`hidden text-xs sm:inline ${o.tone}`}>{o.text}</span>;
+                })()}
                 {s.balanceCents > 0 && (
                   <span className="text-sm font-600 text-bad">{peso(s.balanceCents)}</span>
                 )}

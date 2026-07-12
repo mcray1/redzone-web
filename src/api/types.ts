@@ -92,6 +92,7 @@ export interface Subscriber {
   lateFeeEnabled?: boolean;
   billingExempt?: boolean;
   pppoeUsername?: string | null;
+  lastOnlineAt?: string | null; // last seen in an active session; null = never reported yet
   wifiSsid?: string | null;
   wifiPassword?: string | null; // decrypted, only on the customer's own account view
   loginUser?: { id: string; email: string; active: boolean } | null;

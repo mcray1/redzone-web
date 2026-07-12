@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate, useRequestDiscountForSub, useAppSettings } from '../../hooks/queries';
+import { useSubscriber, useRecordPayment, useCreateCustomerLogin, useSetSubscriberStatus, useUpdateSubscriber, usePlans, useVoidPayment, useProrate, useRequestDiscountForSub, useAppSettings, enforcementMessage } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso, type SubscriberStatus, type Subscriber } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
@@ -511,7 +511,7 @@ interface PayVals { amount: number; method: string; reference?: string; }
 function PaymentModal({ subscriberId, balanceCents, onClose }:
   { subscriberId: string; balanceCents: number; onClose: () => void }) {
   const pay = useRecordPayment();
-  const [result, setResult] = useState<{ receiptNo: string; restored: boolean } | null>(null);
+  const [result, setResult] = useState<{ receiptNo: string; restored: boolean; queued: boolean } | null>(null);
   const [proofPath, setProofPath] = useState<string | null>(null);
   const { register, handleSubmit } = useForm<PayVals>({
     defaultValues: { amount: balanceCents > 0 ? balanceCents / 100 : undefined, method: 'CASH' },
@@ -525,7 +525,7 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
       reference: vals.reference || undefined,
       proofUrl: proofPath || undefined,
     });
-    setResult({ receiptNo: r.receiptNo, restored: r.restored });
+    setResult({ receiptNo: r.receiptNo, restored: r.restored, queued: r.enforcement?.method === 'queued' });
   }
 
   return (
@@ -536,7 +536,13 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-good/10 text-good">✓</div>
             <h2 className="mt-3 font-display text-lg font-700">Payment recorded</h2>
             <p className="mt-1 text-sm text-ink/60">Receipt <span className="font-mono">{result.receiptNo}</span></p>
-            {result.restored && <p className="mt-1 text-sm text-good">Service restored automatically.</p>}
+            {result.restored && (
+              <p className="mt-1 text-sm text-good">
+                {result.queued
+                  ? 'Service restore queued — the router will reconnect them within a minute.'
+                  : 'Service restored automatically.'}
+              </p>
+            )}
             <button className="btn-dark mt-5 w-full" onClick={onClose}>Done</button>
           </div>
         ) : (
@@ -582,6 +588,8 @@ function PaymentModal({ subscriberId, balanceCents, onClose }:
 
 function StatusControl({ id, current }: { id: string; current: SubscriberStatus }) {
   const setStatus = useSetSubscriberStatus();
+  const [, force] = useState(0); // used to snap the dropdown back if a cut is cancelled
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const STATUSES: Array<{ value: SubscriberStatus; label: string }> = [
     { value: 'ACTIVE', label: 'Active' },
     { value: 'PENDING_INSTALLATION', label: 'Pending install' },
@@ -590,26 +598,52 @@ function StatusControl({ id, current }: { id: string; current: SubscriberStatus 
     { value: 'ARCHIVED', label: 'Archived' },
   ];
 
+  // Setting a customer to Suspended/Disconnected now really cuts their internet,
+  // so confirm before doing it. Everything else applies without a prompt.
+  const CUT: SubscriberStatus[] = ['SUSPENDED', 'DISCONNECTED'];
+
+  function change(next: SubscriberStatus) {
+    if (next === current) return;
+    if (CUT.includes(next)) {
+      const word = next === 'SUSPENDED' ? 'Suspended' : 'Disconnected';
+      const ok = window.confirm(
+        `Set this customer to ${word}?\n\n` +
+        `This ACTUALLY cuts their internet on the router now — they lose their connection immediately. ` +
+        `They stay cut until they pay (payment reconnects them automatically) or you reactivate them.`,
+      );
+      if (!ok) {
+        force((n) => n + 1); // revert the <select> back to the real current status
+        return;
+      }
+    }
+    setStatus.mutate({ id, status: next }, {
+      onSuccess: (d) => setMsg(enforcementMessage('This customer', d.enforcement)),
+    });
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {current === 'PENDING_INSTALLATION' && (
-        <button
-          className="btn-primary"
-          onClick={() => setStatus.mutate({ id, status: 'ACTIVE' })}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {current === 'PENDING_INSTALLATION' && (
+          <button
+            className="btn-primary"
+            onClick={() => change('ACTIVE')}
+            disabled={setStatus.isPending}>
+            {setStatus.isPending ? 'Activating…' : 'Mark as Active'}
+          </button>
+        )}
+        <label className="text-xs font-600 uppercase tracking-wide text-ink/40">Set status</label>
+        <select
+          className="input w-auto"
+          value={current}
+          onChange={(e) => change(e.target.value as SubscriberStatus)}
           disabled={setStatus.isPending}>
-          {setStatus.isPending ? 'Activating…' : 'Mark as Active'}
-        </button>
-      )}
-      <label className="text-xs font-600 uppercase tracking-wide text-ink/40">Set status</label>
-      <select
-        className="input w-auto"
-        value={current}
-        onChange={(e) => setStatus.mutate({ id, status: e.target.value })}
-        disabled={setStatus.isPending}>
-        {STATUSES.map((st) => (
-          <option key={st.value} value={st.value}>{st.label}</option>
-        ))}
-      </select>
+          {STATUSES.map((st) => (
+            <option key={st.value} value={st.value}>{st.label}</option>
+          ))}
+        </select>
+      </div>
+      {msg && <p className={`text-xs ${msg.ok ? 'text-ink/60' : 'text-bad'}`}>{msg.text}</p>}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest } from '../api/types';
 
-export function useSubscribers(params: { q?: string; status?: string; type?: string; take?: number; skip?: number }) {
+export function useSubscribers(params: { q?: string; status?: string; type?: string; offlineHours?: number; take?: number; skip?: number }) {
   return useQuery({
     queryKey: ['subscribers', params],
     queryFn: async () => {
@@ -48,7 +48,7 @@ export function useRecordPayment() {
       proofUrl?: string;
     }) => {
       const { data } = await api.post('/billing/payments', payload);
-      return data as { receiptNo: string; balanceCents: number; restored: boolean };
+      return data as { receiptNo: string; balanceCents: number; restored: boolean; enforcement: Enforcement };
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ['subscribers'] });
@@ -359,11 +359,42 @@ export function useSetStaffAssignments() {
 }
 
 // --- Subscriber status change ---
+// The backend enforces the change on the router (hybrid): `direct` = applied
+// live over the API; `queued` = the on-site router will apply it on its next
+// minute tick; `skipped` = nothing to enforce (e.g. no PPPoE/router assigned).
+export type Enforcement = {
+  method: 'direct' | 'queued' | 'skipped';
+  reason?: string;
+  commandId?: string;
+} | null;
+
+// Plain-English outcome of what actually happened on the network after a
+// suspend/restore, so staff aren't left guessing.
+export function enforcementMessage(name: string, e: Enforcement): { text: string; ok: boolean } {
+  if (e && e.method === 'skipped' && e.reason === 'enforcement-disabled') {
+    return {
+      text: `${name} is marked in the app only — network enforcement is OFF, so nothing changed on the router. Turn it on in Settings to make suspend/restore actually take effect.`,
+      ok: false,
+    };
+  }
+  if (!e || e.method === 'skipped') {
+    return {
+      text: `${name} is marked, but no router/PPPoE is linked — nothing changed on the network. Assign a router to enforce it.`,
+      ok: false,
+    };
+  }
+  if (e.method === 'direct') return { text: `${name}: applied on the router now.`, ok: true };
+  return { text: `${name}: queued — the router will apply it within a minute.`, ok: true };
+}
+
 export function useSetSubscriberStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: { id: string; status: string }) =>
-      (await api.patch(`/subscribers/${p.id}/status`, { status: p.status })).data,
+      (await api.patch<{ ok: boolean; status: string; enforcement: Enforcement }>(
+        `/subscribers/${p.id}/status`,
+        { status: p.status },
+      )).data,
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['subscriber', v.id] });
       qc.invalidateQueries({ queryKey: ['subscribers'] });
@@ -960,7 +991,7 @@ export function useDecideExtension() {
 }
 
 // --- App settings (owner/admin toggles) ---
-export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; showWifiInPortal: boolean; }
+export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; showWifiInPortal: boolean; mikrotikEnforcement: boolean; }
 export function useAppSettings() {
   return useQuery({
     queryKey: ['app-settings'],

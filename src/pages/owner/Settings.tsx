@@ -40,6 +40,38 @@ export default function Settings() {
       </div>
 
       <div className="card p-5">
+        <h2 className="font-display font-600">Network enforcement (MikroTik)</h2>
+        <p className="mt-1 text-sm text-ink/50">
+          The master switch for actually cutting and reconnecting customers on the router.
+        </p>
+        {isLoading || !data ? (
+          <div className="mt-4"><Spinner /></div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <div className={`rounded-xl border p-3 text-sm ${data.mikrotikEnforcement ? 'border-bad/40 bg-bad/5 text-bad' : 'border-line bg-paper text-ink/60'}`}>
+              {data.mikrotikEnforcement
+                ? 'ON — Suspend actually disconnects a customer’s internet, and payment/Restore reconnects them.'
+                : 'OFF — Suspend and Restore only change the label in the app. Nothing is sent to any router. (Safe while you set up and test.)'}
+            </div>
+            <Toggle
+              label="Enable network enforcement"
+              hint="Leave OFF until your router report+control script is installed and you’ve tested on one subscriber."
+              on={data.mikrotikEnforcement}
+              busy={update.isPending}
+              onChange={(v) => {
+                if (v && !window.confirm(
+                  'Turn ON network enforcement?\n\n' +
+                  'From now on, Suspend will REALLY disconnect a customer’s internet, and payment/Restore will reconnect them. ' +
+                  'Make sure the router script is installed and you’ve tested on one subscriber first.',
+                )) return;
+                update.mutate({ mikrotikEnforcement: v });
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="card p-5">
         <h2 className="font-display font-600">Customer portal</h2>
         <p className="mt-1 text-sm text-ink/50">What subscribers can see and do in their own portal.</p>
         {isLoading || !data ? (

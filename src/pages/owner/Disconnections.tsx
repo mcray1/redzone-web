@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForDisconnection, useSetSubscriberStatus } from '../../hooks/queries';
+import { useForDisconnection, useSetSubscriberStatus, enforcementMessage } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
 import { Spinner, EmptyState } from '../../components/ui';
@@ -10,10 +11,18 @@ export default function Disconnections() {
   const setStatus = useSetSubscriberStatus();
   const nav = useNavigate();
   const canSuspend = hasPerm('subscribers.status');
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   function suspend(id: string, name: string) {
-    if (window.confirm(`Suspend ${name}? Their service is cut until they pay.`)) {
-      setStatus.mutate({ id, status: 'SUSPENDED' });
+    if (window.confirm(
+      `Suspend ${name}?\n\n` +
+      `This ACTUALLY cuts their internet on the router now — they lose their connection immediately. ` +
+      `They stay cut until they pay (payment reconnects them automatically) or you reactivate them.`,
+    )) {
+      setStatus.mutate(
+        { id, status: 'SUSPENDED' },
+        { onSuccess: (d) => setMsg(enforcementMessage(name, d.enforcement)) },
+      );
     }
   }
 
@@ -23,6 +32,12 @@ export default function Disconnections() {
         <h1 className="font-display text-2xl font-700">For disconnection</h1>
         <p className="text-sm text-ink/50">Active subscribers overdue past their plan's grace period. Highest overdue first.</p>
       </div>
+
+      {msg && (
+        <div className={`card px-4 py-3 text-sm ${msg.ok ? 'text-ink/80' : 'text-bad'}`}>
+          {msg.text}
+        </div>
+      )}
 
       {isLoading ? <Spinner /> : !data || data.rows.length === 0 ? (
         <EmptyState title="Nobody to cut off" hint="No active subscriber is overdue beyond their grace period." />
