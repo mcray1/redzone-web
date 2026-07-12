@@ -30,6 +30,8 @@ import Registrations from './pages/owner/Registrations';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import PasswordResets from './pages/owner/PasswordResets';
+import StartWorkspace from './pages/StartWorkspace';
+import Tenants from './pages/owner/Tenants';
 
 function landingFor(role: string) {
   if (role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER') return '/owner';
@@ -60,6 +62,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/start" element={<StartWorkspace />} />
         <Route path="/forgot" element={<ForgotPassword />} />
         <Route path="/reset" element={<ResetPassword />} />
         <Route path="/" element={<Home />} />
@@ -86,6 +89,7 @@ export default function App() {
           <Route path="network" element={<Network />} />
           <Route path="devices" element={<Devices />} />
           <Route path="vendo" element={<Vendo />} />
+          <Route path="tenants" element={<Tenants />} />
         </Route>
 
         <Route path="/collector" element={<Protected roles={['COLLECTOR']}><Collector /></Protected>} />

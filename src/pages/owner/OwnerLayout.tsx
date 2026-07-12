@@ -10,7 +10,7 @@ import { RoleSwitcher } from '../../components/RoleSwitcher';
 // `perm` — a manager sees the item if they hold ANY of these capabilities.
 // `adminOnly` — only true owners/admins see it (never delegated to a manager).
 // Neither — visible to any staff who reach this layout.
-interface NavItem { to: string; label: string; end?: boolean; icon: string; perm?: PermissionKey[]; adminOnly?: boolean; }
+interface NavItem { to: string; label: string; end?: boolean; icon: string; perm?: PermissionKey[]; adminOnly?: boolean; superOnly?: boolean; }
 
 const OVERVIEW: NavItem = { to: '/owner', label: 'Overview', end: true, icon: 'M3 12l9-9 9 9M5 10v10h14V10', perm: ['reports.view'] };
 
@@ -48,6 +48,7 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: '/owner/roles', label: 'Roles', icon: 'M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z', adminOnly: true },
       { to: '/owner/settings', label: 'Settings', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8', adminOnly: true },
       { to: '/owner/audit', label: 'Activity log', icon: 'M12 6v6l4 2M12 22a10 10 0 100-20 10 10 0 000 20', perm: ['audit.view'] },
+      { to: '/owner/tenants', label: 'Workspaces', icon: 'M3 9l9-6 9 6M4 10v10h5v-6h6v6h5V10', superOnly: true },
     ],
   },
 ];
@@ -79,6 +80,7 @@ export default function OwnerLayout() {
   // Owners/admins see everything; a manager only sees items their role allows.
   const isAdmin = (user?.roles ?? [user?.role]).some((r) => r === 'OWNER' || r === 'ADMIN');
   const canSee = (n: NavItem) => {
+    if (n.superOnly) return Boolean(user?.isSuperAdmin); // platform-level pages
     if (isAdmin) return true;
     if (n.adminOnly) return false;
     if (!n.perm) return true;

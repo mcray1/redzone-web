@@ -30,6 +30,13 @@ export type PermissionKey =
   | 'payroll.view'
   | 'audit.view';
 
+export interface Workspace {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  role: Role;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -37,7 +44,21 @@ export interface User {
   role: Role;
   roles?: Role[];
   branchId?: string | null;
+  tenantId?: string | null;
+  isSuperAdmin?: boolean;
+  memberships?: Workspace[];
   permissions?: Array<PermissionKey | '*'>;
+}
+
+export interface TenantSummary {
+  id: string;
+  name: string;
+  slug: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  hasAgentToken: boolean;
+  subscribers: number;
+  members: number;
+  createdAt: string;
 }
 
 export interface CustomRole {

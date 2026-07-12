@@ -12,6 +12,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<LoginResult>;
   // Second step when 2FA is on: exchange the mfaToken + 6-digit code for a session.
   verifyMfa: (mfaToken: string, code: string) => Promise<User>;
+  // Workspace picker: switch this session to another tenant the user belongs to.
+  selectWorkspace: (tenantId: string) => Promise<User>;
   logout: () => void;
   // True if the signed-in user can perform this capability. Owners/admins hold
   // '*' and can do everything. This is a UI hint only — the backend still enforces.
@@ -53,6 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user as User;
   }
 
+  async function selectWorkspace(tenantId: string): Promise<User> {
+    const { data } = await api.post('/auth/select-tenant', { tenantId });
+    finishLogin(data); // fresh access+refresh bound to the chosen tenant
+    return data.user as User;
+  }
+
   function logout() {
     const rt = tokens.refresh;
     if (rt) api.post('/auth/logout', { refreshToken: rt }).catch(() => {});
@@ -71,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return perms.includes('*') || perms.includes(key);
   }
 
-  return <Ctx.Provider value={{ user, loading, login, verifyMfa, logout, hasPerm }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, verifyMfa, selectWorkspace, logout, hasPerm }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {

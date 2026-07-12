@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest, TenantSummary } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; type?: string; offlineHours?: number; take?: number; skip?: number }) {
   return useQuery({
@@ -1377,5 +1377,44 @@ export function useRejectRegistration() {
       qc.invalidateQueries({ queryKey: ['registrations'] });
       qc.invalidateQueries({ queryKey: ['attention'] });
     },
+  });
+}
+
+// --- Tenants (multi-tenancy: signup, super-admin management) ---
+export function useTenants(enabled = true) {
+  return useQuery({
+    queryKey: ['tenants'],
+    enabled,
+    queryFn: async () => (await api.get<TenantSummary[]>('/tenants')).data,
+  });
+}
+export function useCreateTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { tenantName: string; ownerName: string; email: string; password: string }) =>
+      (await api.post<{ tenant: { id: string; name: string; slug: string }; agentToken: string }>('/tenants', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] }),
+  });
+}
+export function useUpdateTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; name?: string; status?: 'ACTIVE' | 'SUSPENDED' }) =>
+      (await api.patch(`/tenants/${p.id}`, { name: p.name, status: p.status })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] }),
+  });
+}
+export function useRotateAgentToken() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post<{ id: string; agentToken: string }>(`/tenants/${id}/rotate-agent-token`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] }),
+  });
+}
+// Public: create a new workspace (tenant + first owner). No auth required.
+export function useTenantSignup() {
+  return useMutation({
+    mutationFn: async (p: { tenantName: string; ownerName: string; email: string; password: string }) =>
+      (await api.post<{ tenant: { id: string; name: string; slug: string }; agentToken: string }>('/tenants/signup', p)).data,
   });
 }

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/ui';
+import type { User, Workspace } from '../api/types';
 
 interface FormVals { email: string; password: string; }
 
@@ -13,20 +14,28 @@ function landingFor(role: string) {
 }
 
 export default function Login() {
-  const { login, verifyMfa } = useAuth();
+  const { login, verifyMfa, selectWorkspace } = useAuth();
   const nav = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, formState: { isSubmitting } } = useForm<FormVals>();
   const [mfaToken, setMfaToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
+  // Workspace picker: shown when the account belongs to more than one workspace.
+  const [pick, setPick] = useState<Workspace[] | null>(null);
+  const [picking, setPicking] = useState(false);
+
+  function finish(user: User) {
+    if (user.memberships && user.memberships.length > 1) { setPick(user.memberships); return; }
+    nav(landingFor(user.role), { replace: true });
+  }
 
   async function onSubmit(vals: FormVals) {
     setError(null);
     try {
       const res = await login(vals.email, vals.password);
       if (res.mfaRequired) { setMfaToken(res.mfaToken); return; }
-      nav(landingFor(res.user.role), { replace: true });
+      finish(res.user);
     } catch {
       setError('Wrong email or password. Try again.');
     }
@@ -38,11 +47,21 @@ export default function Login() {
     setError(null); setVerifying(true);
     try {
       const user = await verifyMfa(mfaToken, code.trim());
-      nav(landingFor(user.role), { replace: true });
+      finish(user);
     } catch (err) {
       const m = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setError(m || 'That code is wrong or expired.');
     } finally { setVerifying(false); }
+  }
+
+  async function onPick(tenantId: string) {
+    setError(null); setPicking(true);
+    try {
+      const user = await selectWorkspace(tenantId);
+      nav(landingFor(user.role), { replace: true });
+    } catch {
+      setError('Could not open that workspace. Try another.');
+    } finally { setPicking(false); }
   }
 
   return (
@@ -59,7 +78,22 @@ export default function Login() {
           <h1 className="mt-8 font-display text-3xl font-700 leading-tight">
             Welcome back.
           </h1>
-          {mfaToken ? (
+          {pick ? (
+            <>
+              <p className="mt-2 text-white/60">Your account belongs to more than one workspace. Choose where to go.</p>
+              <div className="mt-8 space-y-3">
+                {pick.map((w) => (
+                  <button key={w.tenantId} disabled={picking}
+                    onClick={() => onPick(w.tenantId)}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-ink-700/60 px-4 py-3.5 text-left hover:border-signal/40">
+                    <span className="font-600">{w.tenantName}</span>
+                    <span className="text-xs uppercase tracking-wide text-white/40">{w.role}</span>
+                  </button>
+                ))}
+              </div>
+              {error && <p className="mt-3 text-sm text-signal-300">{error}</p>}
+            </>
+          ) : mfaToken ? (
             <>
               <p className="mt-2 text-white/60">Enter the 6-digit code from your authenticator app — or a backup code if you don't have your phone.</p>
               <form onSubmit={onVerify} className="mt-8 space-y-4">
@@ -118,6 +152,11 @@ export default function Login() {
                   Sign up for internet or a WiFi Vendo →
                 </Link>
               </div>
+
+              <p className="mt-4 text-center text-xs text-white/40">
+                Run your own WISP?{' '}
+                <Link to="/start" className="font-600 text-white/60">Start a RedZone workspace</Link>
+              </p>
             </>
           )}
 
