@@ -203,7 +203,10 @@ function NodeCard({ node, canManage }: { node: NetworkNode; canManage: boolean }
         </div>
         <div>
           <p className="text-xs text-ink/50">Sessions</p>
-          <p className="mt-0.5 font-display text-lg font-700 text-signal-600">{node.sessionCount ?? '—'}</p>
+          <p className="mt-0.5 font-display text-lg font-700 text-signal-600">
+            {node.sessionCount ?? '—'} <span className="text-xs font-500 text-ink/50">PPPoE</span>
+          </p>
+          <p className="text-xs text-ink/50">{node.hotspotCount ?? 0} hotspot</p>
         </div>
       </div>
 

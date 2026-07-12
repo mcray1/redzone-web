@@ -462,6 +462,7 @@ export interface NetworkNode {
   uptime?: string | null;
   version?: string | null;
   sessionCount?: number | null;
+  hotspotCount?: number | null;
   sessions?: Array<{
     name: string; address?: string; uptime?: string;
     subscriberName?: string | null; accountNo?: string | null; subStatus?: string | null;
