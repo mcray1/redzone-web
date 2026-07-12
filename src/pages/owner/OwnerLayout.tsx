@@ -119,6 +119,11 @@ export default function OwnerLayout() {
         <div className="border-t border-line p-3">
           <p className="px-2 text-sm font-600 text-ink">{user?.name}</p>
           <p className="px-2 text-xs text-ink/50">{user?.role}</p>
+          {user?.isSuperAdmin && (
+            <span className="mx-2 mt-1 inline-block rounded-full bg-signal/10 px-2 py-0.5 text-[10px] font-700 uppercase tracking-wider text-signal-600">
+              Super admin
+            </span>
+          )}
           <div className="px-2 pt-2"><RoleSwitcher current="owner" tone="light" /></div>
           <button onClick={() => setPwOpen(true)}
             className="btn-ghost mt-2 w-full justify-start text-sm">Change password</button>
@@ -133,7 +138,14 @@ export default function OwnerLayout() {
       <div className="flex-1 pb-20 md:pb-0">
         {/* Mobile top bar */}
         <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 md:hidden">
-          <Logo />
+          <div className="flex items-center gap-2">
+            <Logo />
+            {user?.isSuperAdmin && (
+              <span className="rounded-full bg-signal/10 px-2 py-0.5 text-[10px] font-700 uppercase tracking-wider text-signal-600">
+                Super
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setPwOpen(true)} className="text-sm font-600 text-ink/60">Password</button>
             <button onClick={() => setTfaOpen(true)} className="text-sm font-600 text-ink/60">2FA</button>
