@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount, useAppSettings, useOnlineCheckout } from '../../hooks/queries';
-import { peso } from '../../api/types';
+import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount, useAppSettings, useOnlineCheckout, usePlans, useChangePlan } from '../../hooks/queries';
+import { peso, type ServicePlan } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
@@ -91,6 +91,9 @@ export default function Portal() {
               )}
             </div>
 
+            {/* Self-service plan change (mid-cycle proration shown before confirming) */}
+            <PortalPlanChange subscriberId={s.id} current={s.servicePlan} />
+
             {/* WiFi credentials — only if recorded and enabled by the admin */}
             {s.wifiSsid && <PortalWifi ssid={s.wifiSsid} password={s.wifiPassword ?? null} />}
 
@@ -166,6 +169,76 @@ function ApplicationStatus() {
 
 // Self-service online payment. Starts a checkout and redirects the customer to
 // the gateway's hosted page; the balance updates later via the signed webhook.
+// Self-service plan change. Picking a plan fetches a proration quote (preview);
+// confirming applies it and refreshes the account (balance + plan).
+export function PortalPlanChange({ subscriberId, current }: { subscriberId: string; current?: ServicePlan | null }) {
+  const { data: plans } = usePlans();
+  const change = useChangePlan();
+  const [selected, setSelected] = useState<ServicePlan | null>(null);
+  const [adjustmentCents, setAdjustmentCents] = useState<number | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const options = (plans ?? []).filter((p) => p.active !== false && p.id !== current?.id);
+  if (!options.length) return null;
+
+  async function pick(p: ServicePlan) {
+    setErr(null); setSelected(p); setAdjustmentCents(null);
+    try {
+      const q = await change.mutateAsync({ subscriberId, servicePlanId: p.id, preview: true });
+      setAdjustmentCents(q.adjustmentCents);
+    } catch { setErr('Could not get a quote. Please try again.'); }
+  }
+  async function confirm() {
+    if (!selected) return;
+    setErr(null);
+    try {
+      const r = await change.mutateAsync({ subscriberId, servicePlanId: selected.id });
+      setDone(`You're now on ${r.newPlan.name}.`);
+      setSelected(null); setAdjustmentCents(null);
+    } catch { setErr('Could not change your plan. Please try again.'); }
+  }
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-display font-600">Change your plan</h2>
+      {done ? (
+        <p className="mt-2 text-sm text-good">{done}</p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-ink/60">
+            Currently on <b>{current?.name ?? 'no plan'}</b>{current ? ` — ${peso(current.priceCents)}/mo` : ''}.
+          </p>
+          <div className="mt-3 space-y-2">
+            {options.map((p) => (
+              <button key={p.id} onClick={() => pick(p)} disabled={change.isPending}
+                className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left ${selected?.id === p.id ? 'border-signal' : 'border-ink/10'}`}>
+                <span className="font-600">{p.name}</span>
+                <span className="text-sm text-ink/60">{peso(p.priceCents)}/mo</span>
+              </button>
+            ))}
+          </div>
+          {selected && adjustmentCents !== null && (
+            <div className="mt-3 rounded-lg bg-paper p-3 text-sm">
+              <p className="text-ink/70">
+                {adjustmentCents > 0
+                  ? <>Switching to <b>{selected.name}</b> adds <b>{peso(adjustmentCents)}</b> to your balance for the rest of this month.</>
+                  : adjustmentCents < 0
+                    ? <>Switching to <b>{selected.name}</b> credits <b>{peso(-adjustmentCents)}</b> to your balance for the rest of this month.</>
+                    : <>Switching to <b>{selected.name}</b> has no mid-cycle charge.</>}
+              </p>
+              <button className="btn-primary mt-3 w-full" onClick={confirm} disabled={change.isPending}>
+                {change.isPending ? 'Switching…' : `Confirm switch to ${selected.name}`}
+              </button>
+            </div>
+          )}
+          {err && <p className="mt-2 text-sm text-bad">{err}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PayNowButton({ subscriberId, amountCents }: { subscriberId: string; amountCents: number }) {
   const checkout = useOnlineCheckout();
   const [err, setErr] = useState<string | null>(null);
