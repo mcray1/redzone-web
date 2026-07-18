@@ -1322,6 +1322,7 @@ export function useSubmitRegistration() {
       fullName: string; phone: string; email: string; password: string; address?: string;
       sitio?: string; barangay?: string; municipality?: string;
       estimatedClients?: number; notes?: string; gpsLat?: number; gpsLng?: number;
+      consent: boolean; // Data Privacy Act — backend 400s without it
     }) => (await api.post('/public/register', p)).data,
   });
 }
