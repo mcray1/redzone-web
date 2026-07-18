@@ -508,7 +508,7 @@ function Field({ label, value, danger }: { label: string; value: string; danger?
 
 interface PayVals { amount: number; method: string; reference?: string; }
 
-function PaymentModal({ subscriberId, balanceCents, onClose }:
+export function PaymentModal({ subscriberId, balanceCents, onClose }:
   { subscriberId: string; balanceCents: number; onClose: () => void }) {
   const pay = useRecordPayment();
   const [result, setResult] = useState<{ receiptNo: string; restored: boolean; queued: boolean } | null>(null);

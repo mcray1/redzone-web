@@ -193,8 +193,9 @@ export interface AuditEntry {
   userName: string;
 }
 
-export const peso = (cents: number) =>
-  '₱' + (cents / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+// Canonical formatter now lives in lib/money; re-exported here so existing
+// `import { peso } from '../api/types'` call sites keep working.
+export { peso } from '../lib/money';
 
 export type StaffRole = 'ADMIN' | 'COLLECTOR';
 
