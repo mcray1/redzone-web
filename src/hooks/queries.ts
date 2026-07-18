@@ -86,6 +86,20 @@ export function useChangePlan() {
   });
 }
 
+// Growth analytics — MRR / ARPU / churn / status mix / revenue trend (P6.5).
+export interface Growth {
+  mrrCents: number; activeSubscribers: number; arpuCents: number;
+  byStatus: Record<string, number>; new30d: number; churned30d: number;
+  churnRatePct: number; collectedByMonth: { month: string; cents: number }[];
+}
+export function useGrowth(opts?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['growth'],
+    enabled: opts?.enabled ?? true,
+    queryFn: async () => (await api.get<Growth>('/reports/growth')).data,
+  });
+}
+
 // Owner stats are derived client-side from the subscriber list for now.
 // Dashboard/billing stats — computed in the database via /stats/overview.
 // Returns aggregates plus small pre-sorted lists, so no page pulls every subscriber.

@@ -4,6 +4,7 @@ import { useOwnerStats, useAttention } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill } from '../../components/ui';
+import { GrowthPanel } from '../../components/GrowthPanel';
 
 function NeedsAttention() {
   const { data } = useAttention();
@@ -93,6 +94,9 @@ export default function Dashboard() {
         <Stat label="Monthly revenue" value={peso(data.monthlyRevenue)} accent />
         <Stat label="Outstanding" value={peso(data.outstanding)} />
       </div>
+
+      {/* Recurring-revenue + churn analytics (P6.5) */}
+      <GrowthPanel enabled={canViewReports} />
 
       <NeedsAttention />
 
