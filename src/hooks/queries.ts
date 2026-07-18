@@ -70,6 +70,22 @@ export function useOnlineCheckout() {
   });
 }
 
+// Change a subscriber's plan with mid-cycle proration. `preview:true` returns the
+// quote (adjustmentCents = charge if >0, credit if <0) without applying it;
+// applying refreshes the account (balance + plan). Used by portal self-service.
+export interface PlanChangeResult { preview?: boolean; adjustmentCents: number; daysRemaining: number; balanceCents?: number; newPlan: { id: string; name: string; priceCents: number }; }
+export function useChangePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; servicePlanId: string; preview?: boolean }) => {
+      const { subscriberId, ...body } = p;
+      const { data } = await api.post<PlanChangeResult>(`/subscribers/${subscriberId}/change-plan`, body);
+      return data;
+    },
+    onSuccess: (d) => { if (!d.preview) qc.invalidateQueries({ queryKey: ['my-account'] }); },
+  });
+}
+
 // Owner stats are derived client-side from the subscriber list for now.
 // Dashboard/billing stats — computed in the database via /stats/overview.
 // Returns aggregates plus small pre-sorted lists, so no page pulls every subscriber.
