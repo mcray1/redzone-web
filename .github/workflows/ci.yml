@@ -16,4 +16,8 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      # Unit + component tests (Vitest/RTL). Fast, no browser needed.
+      # The Playwright browser smoke (npm run e2e) needs `npx playwright install`
+      # + a dev server, so it is run manually rather than on every push.
+      - run: npm test
       - run: npm run build
