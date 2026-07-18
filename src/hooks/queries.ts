@@ -57,6 +57,19 @@ export function useRecordPayment() {
   });
 }
 
+// Start a self-service online payment: creates a PaymentIntent server-side and
+// returns the gateway's hosted checkout URL (the caller redirects to it). The
+// balance is reconciled later by the provider's signed webhook. 501 when no
+// PAYMENT_PROVIDER is configured — gate the button on settings.onlinePayments.
+export function useOnlineCheckout() {
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; amountCents: number; invoiceId?: string }) => {
+      const { data } = await api.post<{ intentId: string; provider: string; checkoutUrl: string }>('/billing/online/checkout', p);
+      return data;
+    },
+  });
+}
+
 // Owner stats are derived client-side from the subscriber list for now.
 // Dashboard/billing stats — computed in the database via /stats/overview.
 // Returns aggregates plus small pre-sorted lists, so no page pulls every subscriber.
@@ -991,7 +1004,7 @@ export function useDecideExtension() {
 }
 
 // --- App settings (owner/admin toggles) ---
-export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; showWifiInPortal: boolean; mikrotikEnforcement: boolean; }
+export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; showWifiInPortal: boolean; mikrotikEnforcement: boolean; onlinePayments?: boolean; }
 export function useAppSettings() {
   return useQuery({
     queryKey: ['app-settings'],
