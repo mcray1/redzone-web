@@ -33,6 +33,8 @@ export default function Register() {
   const [municipality, setMunicipality] = useState('');
   const [barangay, setBarangay] = useState('');
   const [sitio, setSitio] = useState('');
+  // Data Privacy Act: the backend rejects a submission without explicit consent.
+  const [consent, setConsent] = useState(false);
   const [address, setAddress] = useState('');
   const [estimatedClients, setEstimatedClients] = useState('');
   const [notes, setNotes] = useState('');
@@ -86,6 +88,7 @@ export default function Register() {
         gpsLng: coords?.lng,
         estimatedClients: isVendo && estimatedClients ? Number(estimatedClients) : undefined,
         notes: notes || undefined,
+        consent,
       });
       setDone(true);
     } catch (err) {
@@ -190,8 +193,18 @@ export default function Register() {
             <textarea className="input min-h-20" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Best time to reach you, existing provider, etc." />
           </div>
 
+          {/* Data Privacy Act consent — required by the backend (no consent, no collection). */}
+          <label className="flex items-start gap-3 text-sm text-ink/70">
+            <input type="checkbox" className="mt-1" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            <span>
+              I agree that RedZone may collect and store the information above (including my
+              location, if pinned) to process my application and provide the service, as
+              described in its privacy notice. I can request a copy or deletion of my data anytime.
+            </span>
+          </label>
+
           {error && <p className="text-sm text-bad">{error}</p>}
-          <button className="btn-primary w-full" disabled={submit.isPending}>
+          <button className="btn-primary w-full" disabled={submit.isPending || !consent}>
             {submit.isPending ? 'Submitting…' : 'Submit application'}
           </button>
           <p className="text-center text-xs text-ink/40">
