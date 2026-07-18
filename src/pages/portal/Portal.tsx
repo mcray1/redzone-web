@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount, useAppSettings } from '../../hooks/queries';
+import { useMyAccount, useTickets, useCreateTicket, useMyExtensions, useRequestExtension, useMyRegistration, useMyDiscounts, useRequestDiscount, useAppSettings, useOnlineCheckout } from '../../hooks/queries';
 import { peso } from '../../api/types';
 import { Logo, Spinner, StatusPill, SignalMark } from '../../components/ui';
 import { TicketThread, ticketStatusStyle, ticketStatusLabel } from '../../components/TicketThread';
@@ -76,9 +76,13 @@ export default function Portal() {
               ) : (
                 <p className="mt-1 text-sm text-good">You're all paid up. Thank you!</p>
               )}
+              {/* Pay online — shown only when a payment gateway is configured. */}
+              {s.balanceCents > 0 && settings?.onlinePayments && (
+                <PayNowButton subscriberId={s.id} amountCents={s.balanceCents} />
+              )}
               {s.balanceCents > 0 && (
                 <div className="mt-4 rounded-lg bg-paper p-3 text-sm">
-                  <p className="font-600">How to pay</p>
+                  <p className="font-600">{settings?.onlinePayments ? 'Other ways to pay' : 'How to pay'}</p>
                   <p className="mt-1 text-ink/60">
                     Send via GCash or Maya to RedZone, then keep your reference number.
                     Your collector can also accept cash.
@@ -156,6 +160,32 @@ function ApplicationStatus() {
         {reg.servicePlan && <p>Plan: <span className="font-600">{reg.servicePlan.name}</span></p>}
         <p>Applied: {new Date(reg.createdAt).toLocaleDateString('en-PH')}</p>
       </div>
+    </div>
+  );
+}
+
+// Self-service online payment. Starts a checkout and redirects the customer to
+// the gateway's hosted page; the balance updates later via the signed webhook.
+export function PayNowButton({ subscriberId, amountCents }: { subscriberId: string; amountCents: number }) {
+  const checkout = useOnlineCheckout();
+  const [err, setErr] = useState<string | null>(null);
+
+  async function pay() {
+    setErr(null);
+    try {
+      const { checkoutUrl } = await checkout.mutateAsync({ subscriberId, amountCents });
+      window.location.href = checkoutUrl; // hand off to the hosted checkout page
+    } catch {
+      setErr('Could not start the payment. Please try again, or use the options below.');
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <button className="btn-primary w-full" onClick={pay} disabled={checkout.isPending}>
+        {checkout.isPending ? 'Starting…' : `Pay ${peso(amountCents)} now`}
+      </button>
+      {err && <p className="mt-2 text-sm text-bad">{err}</p>}
     </div>
   );
 }
