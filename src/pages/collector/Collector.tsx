@@ -295,6 +295,11 @@ function RemittancePanel() {
       <h3 className="font-display font-600">Cash to remit</h3>
       <p className="mt-1 text-2xl font-700">{peso(expected)}</p>
       <p className="text-xs text-ink/50">{pending?.count ?? 0} unremitted cash payment{(pending?.count ?? 0) === 1 ? '' : 's'}</p>
+      {(pending?.vendoCents ?? 0) > 0 && (
+        <p className="text-xs text-ink/50">
+          incl. {peso(pending?.vendoCents ?? 0)} vendo coins from {pending?.vendoCount} collection{(pending?.vendoCount ?? 0) === 1 ? '' : 's'}
+        </p>
+      )}
 
       {expected > 0 && (
         <div className="mt-3 space-y-2">

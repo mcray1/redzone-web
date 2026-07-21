@@ -795,7 +795,7 @@ export function useVoidPayment() {
 export function useRemittancePending() {
   return useQuery({
     queryKey: ['remittance-pending'],
-    queryFn: async () => (await api.get<{ expectedCents: number; count: number }>('/remittance/pending')).data,
+    queryFn: async () => (await api.get<{ expectedCents: number; count: number; paymentsCents?: number; vendoCents?: number; vendoCount?: number }>('/remittance/pending')).data,
   });
 }
 export function useMyRemittances() {
