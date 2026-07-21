@@ -36,6 +36,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('rz:logout', onLogout);
   }, []);
 
+  // Revalidate the cached session on app load and when the tab regains focus
+  // (throttled), so a role/permission edit reaches the UI without a re-login.
+  // Best-effort: failures leave the cached snapshot in place (the server still
+  // enforces the truth on every request).
+  useEffect(() => {
+    let last = 0;
+    async function revalidate() {
+      if (!tokens.access) return;
+      const now = Date.now();
+      if (now - last < 60_000) return; // at most once a minute
+      last = now;
+      try {
+        const { data } = await api.get('/auth/me');
+        if (data?.user) {
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          setUser(data.user as User);
+        }
+      } catch { /* keep the cached snapshot */ }
+    }
+    revalidate();
+    const onFocus = () => { if (document.visibilityState === 'visible') revalidate(); };
+    document.addEventListener('visibilitychange', onFocus);
+    return () => document.removeEventListener('visibilitychange', onFocus);
+  }, []);
+
   function finishLogin(data: { accessToken: string; refreshToken: string; user: User }) {
     tokens.set(data);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));

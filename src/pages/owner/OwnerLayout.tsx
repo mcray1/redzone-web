@@ -54,10 +54,12 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
 ];
 
 // Bottom-bar primaries on mobile; everything else lives under "More".
+// Billing reuses the desktop nav item so it carries the SAME permission list —
+// a perm-less duplicate here used to show Billing to every manager on mobile.
 const MOBILE_PRIMARY: NavItem[] = [
   OVERVIEW,
-  SECTIONS[1].items[0], // Subscribers
-  { to: '/owner/billing', label: 'Billing', icon: 'M3 6h18v12H3zM3 10h18' },
+  SECTIONS[1].items[0], // Subscribers (no perm — always visible)
+  SECTIONS[2].items[0], // Billing (perm-gated like the sidebar)
 ];
 const MORE_ICON = 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z';
 
@@ -162,7 +164,7 @@ export default function OwnerLayout() {
       {/* Mobile bottom nav — a few primaries + More */}
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-white md:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {MOBILE_PRIMARY.map((n) => (
+        {MOBILE_PRIMARY.filter(canSee).map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-600 ${

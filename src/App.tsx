@@ -33,10 +33,14 @@ import PasswordResets from './pages/owner/PasswordResets';
 import StartWorkspace from './pages/StartWorkspace';
 import Tenants from './pages/owner/Tenants';
 
-function landingFor(role: string) {
-  if (role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER') return '/owner';
-  if (role === 'COLLECTOR') return '/collector';
-  if (role === 'TECHNICIAN') return '/technician';
+// Landing considers EVERY role the user holds (not just the primary), so a
+// multi-role user (e.g. MANAGER+TECHNICIAN) is always sent somewhere they can
+// actually enter instead of bouncing between areas.
+function landingForUser(user: { role: string; roles?: string[] }) {
+  const held = user.roles && user.roles.length ? user.roles : [user.role];
+  if (held.some((r) => r === 'OWNER' || r === 'ADMIN' || r === 'MANAGER')) return '/owner';
+  if (held.includes('COLLECTOR')) return '/collector';
+  if (held.includes('TECHNICIAN')) return '/technician';
   return '/portal';
 }
 
@@ -45,7 +49,7 @@ function Protected({ roles, children }: { roles: string[]; children: ReactNode }
   if (!user) return <Navigate to="/login" replace />;
   const held: string[] = user.roles && user.roles.length ? user.roles : [user.role];
   if (!roles.some((r) => held.includes(r))) {
-    return <Navigate to={landingFor(user.role)} replace />;
+    return <Navigate to={landingForUser(user)} replace />;
   }
   return <>{children}</>;
 }
@@ -53,7 +57,14 @@ function Protected({ roles, children }: { roles: string[]; children: ReactNode }
 function Home() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={landingFor(user.role)} replace />;
+  return <Navigate to={landingForUser(user)} replace />;
+}
+
+// A manager without reports.view shouldn't land on a Dashboard the nav hides
+// from them — send them to Subscribers (always visible to owner-area staff).
+function OwnerIndex() {
+  const { hasPerm } = useAuth();
+  return hasPerm('reports.view') ? <Dashboard /> : <Navigate to="/owner/subscribers" replace />;
 }
 
 export default function App() {
@@ -68,7 +79,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
 
         <Route path="/owner" element={<Protected roles={['OWNER', 'ADMIN', 'MANAGER']}><OwnerLayout /></Protected>}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<OwnerIndex />} />
           <Route path="subscribers" element={<Subscribers />} />
           <Route path="subscribers/:id" element={<SubscriberDetail />} />
           <Route path="registrations" element={<Registrations />} />
