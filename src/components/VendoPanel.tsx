@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   useVendoSummary, useVendoCollections, useVendoExpenses, useVendoCoinTypes,
   useRecordCollection, useRecordVendoExpense,
+  useDeleteVendoCollection, useDeleteVendoExpense,
 } from '../hooks/queries';
 import { peso } from '../api/types';
 import { pesosToCentavos } from '../lib/money';
@@ -26,6 +27,8 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
   const { data: collections } = useVendoCollections(canView ? subscriberId : undefined, range);
   const { data: expenses } = useVendoExpenses(canView ? subscriberId : undefined, range);
   const [collectOpen, setCollectOpen] = useState(false);
+  const delCollection = useDeleteVendoCollection();
+  const delExpense = useDeleteVendoExpense();
   const [expenseOpen, setExpenseOpen] = useState(false);
 
   if (!canView) return null;
@@ -62,9 +65,15 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
           <p className="text-xs font-600 uppercase tracking-wide text-ink/40">Recent collections</p>
           <ul className="mt-1 divide-y divide-line">
             {collections.slice(0, 5).map((c) => (
-              <li key={c.id} className="flex items-center justify-between py-2 text-sm">
+              <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="text-ink/60">{new Date(c.date).toLocaleDateString('en-PH')} · gross {peso(c.grossCents)} · −{c.deductionPct}%</span>
-                <span className="font-600">{peso(c.netCents)}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="font-600">{peso(c.netCents)}</span>
+                  {canManage && !c.remittanceId && (
+                    <DeleteTap onDelete={() => delCollection.mutateAsync({ id: c.id, subscriberId })} />
+                  )}
+                  {c.remittanceId && <span className="text-[10px] text-ink/30" title="Covered by a remittance — cannot be deleted">remitted</span>}
+                </span>
               </li>
             ))}
           </ul>
@@ -76,9 +85,12 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
           <p className="text-xs font-600 uppercase tracking-wide text-ink/40">Recent expenses</p>
           <ul className="mt-1 divide-y divide-line">
             {expenses.slice(0, 5).map((e) => (
-              <li key={e.id} className="flex items-center justify-between py-2 text-sm">
+              <li key={e.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="truncate text-ink/60">{new Date(e.date).toLocaleDateString('en-PH')} · {e.category} — {e.description}</span>
-                <span className="font-600 text-bad">{peso(e.amountCents)}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="font-600 text-bad">{peso(e.amountCents)}</span>
+                  {canManage && <DeleteTap onDelete={() => delExpense.mutateAsync({ id: e.id, subscriberId })} />}
+                </span>
               </li>
             ))}
           </ul>
@@ -88,6 +100,28 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
       {collectOpen && <CollectModal subscriberId={subscriberId} onClose={() => setCollectOpen(false)} />}
       {expenseOpen && <ExpenseModal subscriberId={subscriberId} onClose={() => setExpenseOpen(false)} />}
     </div>
+  );
+}
+
+// Two-tap delete: first tap arms ("sure?"), second tap deletes. No browser
+// dialogs; disarms itself after 3 s.
+function DeleteTap({ onDelete }: { onDelete: () => Promise<unknown> }) {
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function tap() {
+    if (!armed) {
+      setArmed(true);
+      setTimeout(() => setArmed(false), 3000);
+      return;
+    }
+    setBusy(true);
+    try { await onDelete(); } finally { setBusy(false); setArmed(false); }
+  }
+  return (
+    <button className={`pill border px-2 text-[11px] ${armed ? 'border-bad text-bad' : 'border-line text-ink/40'}`}
+      onClick={tap} disabled={busy}>
+      {busy ? '…' : armed ? 'sure?' : '✕'}
+    </button>
   );
 }
 

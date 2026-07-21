@@ -1234,6 +1234,63 @@ export function useVendoReport(range?: { from?: string; to?: string }) {
     queryFn: async () => (await api.get<{ rows: VendoReportRow[]; totals: { grossCents: number; netCents: number; expenseCents: number; profitCents: number } }>('/vendo/report', { params })).data,
   });
 }
+// ---- Vendo CRUD (sites, coin types, deletes) ------------------------------
+export function useCreateVendoSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      vendoName: string; vendoNumber?: string; ownerName?: string; phone?: string;
+      municipality?: string; barangay?: string; sitio?: string; address?: string; notes?: string;
+    }) => (await api.post('/vendo/sites', p)).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendo-report'] }); qc.invalidateQueries({ queryKey: ['subscribers'] }); },
+  });
+}
+export function useCreateCoinType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { label: string; faceCents: number; gramsPerCoin?: number }) => (await api.post('/vendo/coin-types', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
+  });
+}
+export function useUpdateCoinType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; label?: string; faceCents?: number; gramsPerCoin?: number }) => {
+      const { id, ...body } = p;
+      return (await api.patch(`/vendo/coin-types/${id}`, body)).data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
+  });
+}
+export function useDeleteCoinType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/vendo/coin-types/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
+  });
+}
+export function useDeleteVendoCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; subscriberId: string }) => (await api.delete(`/vendo/collections/${p.id}`)).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['vendo-collections', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-report'] });
+    },
+  });
+}
+export function useDeleteVendoExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; subscriberId: string }) => (await api.delete(`/vendo/expenses/${p.id}`)).data,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['vendo-expenses', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-report'] });
+    },
+  });
+}
 
 // Audit log (owner/admin).
 export function useAuditLog(limit = 100) {
