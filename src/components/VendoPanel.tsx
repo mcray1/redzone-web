@@ -6,6 +6,7 @@ import {
   useRecordCollection, useRecordVendoExpense,
 } from '../hooks/queries';
 import { peso } from '../api/types';
+import { pesosToCentavos } from '../lib/money';
 
 function apiError(err: unknown, fallback: string) {
   const e = err as AxiosError<{ error?: string }>;
@@ -104,20 +105,25 @@ function CollectModal({ subscriberId, onClose }: { subscriberId: string; onClose
   const record = useRecordCollection();
   const [date, setDate] = useState(today());
   const [grams, setGrams] = useState<Record<string, string>>({});
+  // ₱10/₱20 piles aren't weighed in practice — staff count them and enter the
+  // total value directly.
+  const [tens, setTens] = useState('');
+  const [twenties, setTwenties] = useState('');
   const [pct, setPct] = useState('0');
   const [note, setNote] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
-  // Live preview using the current weights.
+  // Live preview using the current weights + direct amounts.
   const { gross, net } = useMemo(() => {
     let g = 0;
     for (const c of coins ?? []) {
       const grm = Number(grams[c.key] || 0);
       if (grm > 0 && c.gramsPerCoin > 0) g += Math.round(grm / c.gramsPerCoin) * c.faceCents;
     }
+    g += pesosToCentavos(tens) + pesosToCentavos(twenties);
     const p = Math.min(100, Math.max(0, Number(pct) || 0));
     return { gross: g, net: g - Math.round((g * p) / 100) };
-  }, [coins, grams, pct]);
+  }, [coins, grams, tens, twenties, pct]);
 
   const unsetCoins = (coins ?? []).filter((c) => !c.gramsPerCoin);
 
@@ -126,9 +132,13 @@ function CollectModal({ subscriberId, onClose }: { subscriberId: string; onClose
     const lines = (coins ?? [])
       .filter((c) => Number(grams[c.key] || 0) > 0)
       .map((c) => ({ key: c.key, grams: Number(grams[c.key]) }));
-    if (!lines.length) { setErr('Enter the weight of at least one coin pile.'); return; }
+    const direct = [
+      { label: '₱10 coins', amountCents: pesosToCentavos(tens) },
+      { label: '₱20 coins', amountCents: pesosToCentavos(twenties) },
+    ].filter((d) => d.amountCents > 0);
+    if (!lines.length && !direct.length) { setErr('Enter a coin-pile weight or a ₱10/₱20 total.'); return; }
     try {
-      await record.mutateAsync({ subscriberId, date, deductionPct: Number(pct) || 0, note: note || undefined, lines });
+      await record.mutateAsync({ subscriberId, date, deductionPct: Number(pct) || 0, note: note || undefined, lines, direct });
       onClose();
     } catch (e) { setErr(apiError(e, 'Could not save the collection.')); }
   }
@@ -160,6 +170,21 @@ function CollectModal({ subscriberId, onClose }: { subscriberId: string; onClose
                   <p className="mt-0.5 text-[11px] text-ink/40">{c.label}{c.gramsPerCoin ? ` · ${c.gramsPerCoin.toFixed(2)}g` : ' · no weight'}</p>
                 </div>
               ))}
+            </div>
+          </div>
+          <div>
+            <label className="label">₱10 / ₱20 coins — total value (₱)</label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <div>
+                <input className="input" inputMode="decimal" placeholder="₱10 total"
+                  value={tens} onChange={(e) => setTens(e.target.value.replace(/[^0-9.]/g, ''))} />
+                <p className="mt-0.5 text-[11px] text-ink/40">counted, not weighed</p>
+              </div>
+              <div>
+                <input className="input" inputMode="decimal" placeholder="₱20 total"
+                  value={twenties} onChange={(e) => setTwenties(e.target.value.replace(/[^0-9.]/g, ''))} />
+                <p className="mt-0.5 text-[11px] text-ink/40">counted, not weighed</p>
+              </div>
             </div>
           </div>
           <div>

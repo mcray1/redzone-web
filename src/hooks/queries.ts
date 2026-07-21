@@ -1182,7 +1182,11 @@ export function useVendoCollections(subscriberId: string | undefined, range?: { 
 export function useRecordCollection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { subscriberId: string; date: string; deductionPct: number; note?: string; lines: Array<{ key: string; grams?: number; count?: number }> }) => {
+    mutationFn: async (p: {
+      subscriberId: string; date: string; deductionPct: number; note?: string;
+      lines: Array<{ key: string; grams?: number; count?: number }>;
+      direct?: Array<{ label: string; amountCents: number }>; // unweighed ₱10/₱20 totals
+    }) => {
       const { subscriberId, ...body } = p;
       return (await api.post(`/vendo/subscriber/${subscriberId}/collections`, body)).data;
     },
