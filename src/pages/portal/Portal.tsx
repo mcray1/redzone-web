@@ -91,8 +91,9 @@ export default function Portal() {
               )}
             </div>
 
-            {/* Self-service plan change (mid-cycle proration shown before confirming) */}
-            <PortalPlanChange subscriberId={s.id} current={s.servicePlan} />
+            {/* Self-service plan change (mid-cycle proration shown before confirming).
+                Vendo partners have no service plan — nothing to change. */}
+            {s.accountType !== 'VENDO' && <PortalPlanChange subscriberId={s.id} current={s.servicePlan} />}
 
             {/* WiFi credentials — only if recorded and enabled by the admin */}
             {s.wifiSsid && <PortalWifi ssid={s.wifiSsid} password={s.wifiPassword ?? null} />}

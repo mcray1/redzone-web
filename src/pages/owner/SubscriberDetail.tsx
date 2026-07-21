@@ -46,10 +46,14 @@ export default function SubscriberDetail() {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
-          <Field label="Plan" value={s.servicePlan?.name ?? '—'} />
-          <Field label="Monthly" value={s.servicePlan ? peso(s.servicePlan.priceCents) : '—'} />
+          {s.accountType !== 'VENDO' && (
+            <>
+              <Field label="Plan" value={s.servicePlan?.name ?? '—'} />
+              <Field label="Monthly" value={s.servicePlan ? peso(s.servicePlan.priceCents) : '—'} />
+            </>
+          )}
           <Field label="Balance" value={peso(s.balanceCents)} danger={s.balanceCents > 0} />
-          <Field label="Due day" value={`Day ${s.dueDay}`} />
+          {s.accountType !== 'VENDO' && <Field label="Due day" value={`Day ${s.dueDay}`} />}
           <Field label="Phone" value={s.phone ?? '—'} />
           <Field label="Email" value={s.email ?? '—'} />
           <Field label="Sitio / Purok" value={s.sitio ?? '—'} />
@@ -324,7 +328,7 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           sitio: v.sitio,
           municipality: v.municipality,
           barangay: v.barangay,
-          servicePlanId: v.servicePlanId,
+          servicePlanId: isVendo ? undefined : v.servicePlanId,
           dueDay: v.dueDay ? Number(v.dueDay) : undefined,
           lateFeeEnabled: !!v.lateFeeEnabled,
           billingExempt: !!v.billingExempt,
@@ -379,19 +383,24 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
               onBarangay={(v) => setValue('barangay', v)}
             />
           </div>
-          <div className="col-span-1">
-            <label className="label">Due day</label>
-            <input className="input" type="number" min={1} max={28} {...register('dueDay')} />
-          </div>
-          <div className="col-span-1">
-            <label className="label">Service plan</label>
-            <select className="input" {...register('servicePlanId')}>
-              <option value="">— No plan —</option>
-              {plans?.filter((p) => p.active).map((p) => (
-                <option key={p.id} value={p.id}>{p.name} ({peso(p.priceCents)}/mo)</option>
-              ))}
-            </select>
-          </div>
+          {/* Vendo sites have no service plan and no monthly billing cycle. */}
+          {!isVendo && (
+            <>
+              <div className="col-span-1">
+                <label className="label">Due day</label>
+                <input className="input" type="number" min={1} max={28} {...register('dueDay')} />
+              </div>
+              <div className="col-span-1">
+                <label className="label">Service plan</label>
+                <select className="input" {...register('servicePlanId')}>
+                  <option value="">— No plan —</option>
+                  {plans?.filter((p) => p.active).map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} ({peso(p.priceCents)}/mo)</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
           <div className="col-span-2">
             <label className="label">PPPoE username (links to the router account)</label>
             <input className="input" {...register('pppoeUsername')} placeholder="e.g. juan_delacruz" />
