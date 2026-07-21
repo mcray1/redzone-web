@@ -1269,10 +1269,13 @@ export function useDeleteCoinType() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
   });
 }
-export function useDeleteVendoCollection() {
+// Void, not delete (owner/admin only; reason required) — the record stays
+// visible with who/when/why, its amounts drop out of income + remit.
+export function useVoidVendoCollection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { id: string; subscriberId: string }) => (await api.delete(`/vendo/collections/${p.id}`)).data,
+    mutationFn: async (p: { id: string; subscriberId: string; reason: string }) =>
+      (await api.post(`/vendo/collections/${p.id}/void`, { reason: p.reason })).data,
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['vendo-collections', v.subscriberId] });
       qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
@@ -1280,10 +1283,11 @@ export function useDeleteVendoCollection() {
     },
   });
 }
-export function useDeleteVendoExpense() {
+export function useVoidVendoExpense() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { id: string; subscriberId: string }) => (await api.delete(`/vendo/expenses/${p.id}`)).data,
+    mutationFn: async (p: { id: string; subscriberId: string; reason: string }) =>
+      (await api.post(`/vendo/expenses/${p.id}/void`, { reason: p.reason })).data,
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['vendo-expenses', v.subscriberId] });
       qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
