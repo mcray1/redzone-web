@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   useVendoSummary, useVendoCollections, useVendoExpenses, useVendoCoinTypes,
   useRecordCollection, useRecordVendoExpense,
-  useDeleteVendoCollection, useDeleteVendoExpense,
+  useVoidVendoCollection, useVoidVendoExpense,
 } from '../hooks/queries';
 import { peso } from '../api/types';
 import { pesosToCentavos } from '../lib/money';
@@ -17,9 +17,11 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
 
 export function VendoPanel({ subscriberId }: { subscriberId: string }) {
-  const { hasPerm } = useAuth();
+  const { user, hasPerm } = useAuth();
   const canView = hasPerm('vendo.view') || hasPerm('vendo.manage');
   const canManage = hasPerm('vendo.manage');
+  // Voiding cash records is owner/admin only — same standard as payment voids.
+  const canVoid = user?.role === 'OWNER' || user?.role === 'ADMIN';
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const range = { from, to };
@@ -27,8 +29,8 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
   const { data: collections } = useVendoCollections(canView ? subscriberId : undefined, range);
   const { data: expenses } = useVendoExpenses(canView ? subscriberId : undefined, range);
   const [collectOpen, setCollectOpen] = useState(false);
-  const delCollection = useDeleteVendoCollection();
-  const delExpense = useDeleteVendoExpense();
+  const voidCollection = useVoidVendoCollection();
+  const voidExpense = useVoidVendoExpense();
   const [expenseOpen, setExpenseOpen] = useState(false);
 
   if (!canView) return null;
@@ -65,14 +67,19 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
           <p className="text-xs font-600 uppercase tracking-wide text-ink/40">Recent collections</p>
           <ul className="mt-1 divide-y divide-line">
             {collections.slice(0, 5).map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="text-ink/60">{new Date(c.date).toLocaleDateString('en-PH')} · gross {peso(c.grossCents)} · −{c.deductionPct}%</span>
+              <li key={c.id} className={`flex items-center justify-between gap-2 py-2 text-sm ${c.voided ? 'opacity-60' : ''}`}>
+                <span className={`text-ink/60 ${c.voided ? 'line-through' : ''}`} title={c.voided ? `Voided: ${c.voidReason || ''}` : undefined}>
+                  {new Date(c.date).toLocaleDateString('en-PH')} · gross {peso(c.grossCents)} · −{c.deductionPct}%
+                </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="font-600">{peso(c.netCents)}</span>
-                  {canManage && !c.remittanceId && (
-                    <DeleteTap onDelete={() => delCollection.mutateAsync({ id: c.id, subscriberId })} />
-                  )}
-                  {c.remittanceId && <span className="text-[10px] text-ink/30" title="Covered by a remittance — cannot be deleted">remitted</span>}
+                  <span className={`font-600 ${c.voided ? 'line-through text-ink/40' : ''}`}>{peso(c.netCents)}</span>
+                  {c.voided ? (
+                    <span className="text-[10px] text-bad/70">voided</span>
+                  ) : c.remittanceId ? (
+                    <span className="text-[10px] text-ink/30" title="Covered by a remittance — immutable">remitted</span>
+                  ) : canVoid ? (
+                    <VoidTap onVoid={(reason) => voidCollection.mutateAsync({ id: c.id, subscriberId, reason })} />
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -85,11 +92,17 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
           <p className="text-xs font-600 uppercase tracking-wide text-ink/40">Recent expenses</p>
           <ul className="mt-1 divide-y divide-line">
             {expenses.slice(0, 5).map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="truncate text-ink/60">{new Date(e.date).toLocaleDateString('en-PH')} · {e.category} — {e.description}</span>
+              <li key={e.id} className={`flex items-center justify-between gap-2 py-2 text-sm ${e.voided ? 'opacity-60' : ''}`}>
+                <span className={`truncate text-ink/60 ${e.voided ? 'line-through' : ''}`} title={e.voided ? `Voided: ${e.voidReason || ''}` : undefined}>
+                  {new Date(e.date).toLocaleDateString('en-PH')} · {e.category} — {e.description}
+                </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="font-600 text-bad">{peso(e.amountCents)}</span>
-                  {canManage && <DeleteTap onDelete={() => delExpense.mutateAsync({ id: e.id, subscriberId })} />}
+                  <span className={`font-600 text-bad ${e.voided ? 'line-through opacity-50' : ''}`}>{peso(e.amountCents)}</span>
+                  {e.voided ? (
+                    <span className="text-[10px] text-bad/70">voided</span>
+                  ) : canVoid ? (
+                    <VoidTap onVoid={(reason) => voidExpense.mutateAsync({ id: e.id, subscriberId, reason })} />
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -103,25 +116,36 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
   );
 }
 
-// Two-tap delete: first tap arms ("sure?"), second tap deletes. No browser
-// dialogs; disarms itself after 3 s.
-function DeleteTap({ onDelete }: { onDelete: () => Promise<unknown> }) {
-  const [armed, setArmed] = useState(false);
+// Void with a required reason: tap "void" → a small reason box appears →
+// confirm. The record is kept (struck through), never deleted.
+function VoidTap({ onVoid }: { onVoid: (reason: string) => Promise<unknown> }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  async function tap() {
-    if (!armed) {
-      setArmed(true);
-      setTimeout(() => setArmed(false), 3000);
-      return;
-    }
+  const [err, setErr] = useState(false);
+  async function confirm() {
+    if (reason.trim().length < 3) { setErr(true); return; }
     setBusy(true);
-    try { await onDelete(); } finally { setBusy(false); setArmed(false); }
+    try { await onVoid(reason.trim()); setOpen(false); setReason(''); }
+    catch { setErr(true); }
+    finally { setBusy(false); }
+  }
+  if (!open) {
+    return (
+      <button className="pill border border-line px-2 text-[11px] text-ink/40" onClick={() => setOpen(true)}>void</button>
+    );
   }
   return (
-    <button className={`pill border px-2 text-[11px] ${armed ? 'border-bad text-bad' : 'border-line text-ink/40'}`}
-      onClick={tap} disabled={busy}>
-      {busy ? '…' : armed ? 'sure?' : '✕'}
-    </button>
+    <span className="flex items-center gap-1">
+      <input autoFocus className={`input h-7 w-28 px-2 py-0 text-xs ${err ? 'border-bad' : ''}`}
+        placeholder="reason (required)" value={reason}
+        onChange={(e) => { setReason(e.target.value); setErr(false); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') confirm(); if (e.key === 'Escape') setOpen(false); }} />
+      <button className="pill border border-bad px-2 text-[11px] text-bad" onClick={confirm} disabled={busy}>
+        {busy ? '…' : 'void'}
+      </button>
+      <button className="pill border border-line px-2 text-[11px] text-ink/40" onClick={() => setOpen(false)}>✕</button>
+    </span>
   );
 }
 
