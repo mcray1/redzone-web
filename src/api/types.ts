@@ -452,6 +452,10 @@ export interface VendoCollection {
   deductionPct: number;
   deductionCents: number;
   netCents: number;
+  // Cash accountability: set once a remittance covers these coins (then the
+  // collection can no longer be deleted).
+  remittanceId?: string | null;
+  remitCents?: number;
   note?: string | null;
   createdAt: string;
 }
