@@ -23,7 +23,9 @@ export default function Vendo() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const { data, isLoading } = useVendoReport({ from, to });
-  const { hasPerm } = useAuth();
+  const { user, hasPerm } = useAuth();
+  // Structure (adding sites, coin types) is owner/admin; recording is delegable.
+  const canStructure = user?.role === 'OWNER' || user?.role === 'ADMIN';
   const nav = useNavigate();
   const [coinsOpen, setCoinsOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -37,12 +39,10 @@ export default function Vendo() {
           <h1 className="font-display text-2xl font-700">Vendo</h1>
           <p className="text-sm text-ink/50">Coin income and expenses per WiFi vendo site. Kept separate from subscriber billing.</p>
         </div>
-        {hasPerm('vendo.manage') && (
-          <div className="flex shrink-0 gap-2">
-            <button className="btn-ghost" onClick={() => setCoinsOpen(true)}>Coin weights</button>
-            <button className="btn-primary" onClick={() => setAddOpen(true)}>+ Add site</button>
-          </div>
-        )}
+        <div className="flex shrink-0 gap-2">
+          {hasPerm('vendo.manage') && <button className="btn-ghost" onClick={() => setCoinsOpen(true)}>Coin weights</button>}
+          {canStructure && <button className="btn-primary" onClick={() => setAddOpen(true)}>+ Add site</button>}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
@@ -179,6 +179,8 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 
 function CoinWeightsModal({ onClose }: { onClose: () => void }) {
   const { data: coins, isLoading } = useVendoCoinTypes();
+  const { user } = useAuth();
+  const canStructure = user?.role === 'OWNER' || user?.role === 'ADMIN';
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 md:items-center md:p-4" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
@@ -186,8 +188,8 @@ function CoinWeightsModal({ onClose }: { onClose: () => void }) {
         <p className="mt-1 text-sm text-ink/50">Set grams per coin, or calibrate by weighing a known count. Used to convert weight → pesos.</p>
         {isLoading ? <div className="mt-4"><Spinner /></div> : (
           <div className="mt-4 space-y-3">
-            {coins?.map((c) => <CoinRow key={c.id} coin={c} />)}
-            <AddCoinRow />
+            {coins?.map((c) => <CoinRow key={c.id} coin={c} canStructure={canStructure} />)}
+            {canStructure && <AddCoinRow />}
           </div>
         )}
         <button className="btn-primary mt-4 w-full" onClick={onClose}>Done</button>
@@ -196,7 +198,7 @@ function CoinWeightsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CoinRow({ coin }: { coin: VendoCoinType }) {
+function CoinRow({ coin, canStructure }: { coin: VendoCoinType; canStructure: boolean }) {
   const setWeight = useSetCoinWeight();
   const calibrate = useCalibrateCoin();
   const updateType = useUpdateCoinType();
@@ -241,15 +243,17 @@ function CoinRow({ coin }: { coin: VendoCoinType }) {
         <p className="font-600">{coin.label} <span className="text-xs font-400 text-ink/40">{peso(coin.faceCents)}</span></p>
         <span className="flex items-center gap-2 text-xs text-ink/40">
           {coin.gramsPerCoin ? `${coin.gramsPerCoin.toFixed(3)} g/coin` : 'not set'}
-          <button className={`pill border px-2 text-[11px] ${armed ? 'border-bad text-bad' : 'border-line text-ink/40'}`} onClick={remove}>
-            {armed ? 'sure?' : 'remove'}
-          </button>
+          {canStructure && (
+            <button className={`pill border px-2 text-[11px] ${armed ? 'border-bad text-bad' : 'border-line text-ink/40'}`} onClick={remove}>
+              {armed ? 'sure?' : 'remove'}
+            </button>
+          )}
         </span>
       </div>
       <div className="mt-2 flex gap-2 text-xs">
         <button className={`pill border ${mode === 'set' ? 'border-ink text-ink' : 'border-line text-ink/40'}`} onClick={() => setMode('set')}>Type grams</button>
         <button className={`pill border ${mode === 'cal' ? 'border-ink text-ink' : 'border-line text-ink/40'}`} onClick={() => setMode('cal')}>Calibrate</button>
-        <button className={`pill border ${mode === 'edit' ? 'border-ink text-ink' : 'border-line text-ink/40'}`} onClick={() => setMode('edit')}>Edit</button>
+        {canStructure && <button className={`pill border ${mode === 'edit' ? 'border-ink text-ink' : 'border-line text-ink/40'}`} onClick={() => setMode('edit')}>Edit</button>}
       </div>
       {mode === 'edit' ? (
         <div className="mt-2 grid grid-cols-2 gap-2">
