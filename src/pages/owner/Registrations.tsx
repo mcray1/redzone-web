@@ -125,7 +125,7 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
       const res = await approve.mutateAsync({
         id: reg.id,
         accountNo: accountNo.trim() || undefined,
-        servicePlanId: servicePlanId || null,
+        servicePlanId: reg.type === 'VENDO' ? null : (servicePlanId || null),
         dueDay: Number(dueDay) || 1,
         loginEmail: !reg.hasLogin && makeLogin ? loginEmail.trim() : undefined,
         loginPassword: !reg.hasLogin && makeLogin ? loginPassword : undefined,
