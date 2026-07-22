@@ -72,6 +72,35 @@ export default function Settings() {
       </div>
 
       <div className="card p-5">
+        <h2 className="font-display font-600">Vendo</h2>
+        <p className="mt-1 text-sm text-ink/50">
+          How much of a coin collection the recorder owes into their next remittance.
+          The basis is locked in when each collection is recorded — changing it here
+          never revalues coins already in someone's bag.
+        </p>
+        {isLoading || !data ? (
+          <div className="mt-4"><Spinner /></div>
+        ) : (
+          <div className="mt-4 space-y-2">
+            <BasisOption
+              label="Net (default)"
+              hint="Gross minus the partner's share — right when the partner is paid from the machine at collection time."
+              active={(data.vendoRemitBasis ?? 'NET') === 'NET'}
+              busy={update.isPending}
+              onPick={() => update.mutate({ vendoRemitBasis: 'NET' })}
+            />
+            <BasisOption
+              label="Gross"
+              hint="The full coin amount — right when the partner is paid separately (e.g. by transfer later)."
+              active={data.vendoRemitBasis === 'GROSS'}
+              busy={update.isPending}
+              onPick={() => update.mutate({ vendoRemitBasis: 'GROSS' })}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="card p-5">
         <h2 className="font-display font-600">Customer portal</h2>
         <p className="mt-1 text-sm text-ink/50">What subscribers can see and do in their own portal.</p>
         {isLoading || !data ? (
@@ -107,6 +136,24 @@ function MaxDiscount({ current, busy, onSave }: { current: number; busy: boolean
         <button className="btn-primary shrink-0" disabled={busy || !dirty} onClick={() => onSave(cents)}>Save</button>
       </div>
     </div>
+  );
+}
+
+function BasisOption({ label, hint, active, busy, onPick }:
+  { label: string; hint: string; active: boolean; busy: boolean; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={busy || active}
+      onClick={onPick}
+      className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left ${active ? 'border-signal-600 bg-signal/5' : 'border-line hover:bg-paper'}`}
+    >
+      <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${active ? 'border-signal-600 bg-signal-600' : 'border-line'}`} />
+      <span className="min-w-0">
+        <span className="block font-600">{label}</span>
+        <span className="block text-xs text-ink/50">{hint}</span>
+      </span>
+    </button>
   );
 }
 

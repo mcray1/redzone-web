@@ -1034,7 +1034,7 @@ export function useDecideExtension() {
 }
 
 // --- App settings (owner/admin toggles) ---
-export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; showWifiInPortal: boolean; mikrotikEnforcement: boolean; onlinePayments?: boolean; }
+export interface AppSettings { discountByCollector: boolean; discountByCustomer: boolean; maxDiscountCents: number; showWifiInPortal: boolean; mikrotikEnforcement: boolean; onlinePayments?: boolean; vendoRemitBasis?: 'NET' | 'GROSS'; }
 export function useAppSettings() {
   return useQuery({
     queryKey: ['app-settings'],
