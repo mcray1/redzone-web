@@ -1560,3 +1560,170 @@ export function useTenantSignup() {
       (await api.post<{ tenant: { id: string; name: string; slug: string }; agentToken: string }>('/tenants/signup', p)).data,
   });
 }
+
+// --- Accounting (P3 suite — owner/admin only) ------------------------------
+export interface Vendor { id: string; name: string; tin?: string | null; contact?: string | null; notes?: string | null }
+export interface VendorBill {
+  id: string; vendorId: string; vendorName: string; description: string; category?: string | null;
+  billDate: string; dueDate: string; amountCents: number; paidCents: number; outstandingCents: number;
+  reference?: string | null; status: 'UNPAID' | 'PARTIAL' | 'PAID' | 'VOID';
+}
+export interface PayablesAging {
+  rows: Array<{ id: string; vendor: string; description: string; dueDate: string; outstandingCents: number; daysOverdue: number; bucket: string }>;
+  buckets: { current: number; d1_30: number; d31_60: number; d60plus: number };
+  totalCents: number; count: number;
+}
+export interface AccountingPeriod { id: string; period: string; status: 'OPEN' | 'CLOSED'; closedAt?: string | null }
+export interface FixedAssetRow {
+  id: string; name: string; category?: string | null; acquiredAt: string; costCents: number;
+  salvageCents: number; usefulLifeMonths: number; notes?: string | null;
+  monthlyCents: number; monthsElapsed: number; accumulatedCents: number; bookValueCents: number;
+}
+export interface CreditNote { id: string; subscriberId: string; type: 'CREDIT' | 'REFUND'; amountCents: number; reason: string; method?: string | null; createdAt: string }
+export interface BankAccount { id: string; name: string; type: string; notes?: string | null; active: boolean }
+export interface UnreconciledPayment { id: string; receiptNo: string; amountCents: number; method: string; reference?: string | null; createdAt: string; subscriber: string; accountNo: string }
+export interface Cashflow { inflowsCents: number; outflows: { expenseCents: number; vendorPaymentCents: number; refundCents: number; totalCents: number }; netCents: number }
+export interface FinancialPosition { receivablesCents: number; payablesCents: number; customerCreditsCents: number; fixedAssetBookValueCents: number; note: string }
+
+export function useVendors() {
+  return useQuery({ queryKey: ['vendors'], queryFn: async () => (await api.get<Vendor[]>('/payables/vendors')).data });
+}
+export function useSaveVendor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: Partial<Vendor> & { name: string }) => {
+      const { id, ...body } = p;
+      return id ? (await api.patch(`/payables/vendors/${id}`, body)).data : (await api.post('/payables/vendors', body)).data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vendors'] }),
+  });
+}
+export function useVendorBills(params?: { status?: string; vendorId?: string }) {
+  return useQuery({ queryKey: ['vendor-bills', params], queryFn: async () => (await api.get<VendorBill[]>('/payables/bills', { params })).data });
+}
+export function usePayablesAging() {
+  return useQuery({ queryKey: ['payables-aging'], queryFn: async () => (await api.get<PayablesAging>('/payables/aging')).data });
+}
+function invalidatePayables(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['vendor-bills'] });
+  qc.invalidateQueries({ queryKey: ['payables-aging'] });
+  qc.invalidateQueries({ queryKey: ['position'] });
+  qc.invalidateQueries({ queryKey: ['cashflow'] });
+}
+export function useCreateBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { vendorId: string; description: string; category?: string; billDate: string; dueDate: string; amountCents: number; reference?: string }) =>
+      (await api.post('/payables/bills', p)).data,
+    onSuccess: () => invalidatePayables(qc),
+  });
+}
+export function usePayBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; amountCents: number; method?: string; reference?: string }) => {
+      const { id, ...body } = p;
+      return (await api.post(`/payables/bills/${id}/pay`, body)).data;
+    },
+    onSuccess: () => invalidatePayables(qc),
+  });
+}
+export function useVoidBill() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/payables/bills/${id}/void`)).data,
+    onSuccess: () => invalidatePayables(qc),
+  });
+}
+
+export function usePeriods() {
+  return useQuery({ queryKey: ['periods'], queryFn: async () => (await api.get<AccountingPeriod[]>('/periods')).data });
+}
+export function useClosePeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (period: string) => (await api.post(`/periods/${period}/close`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['periods'] }),
+  });
+}
+export function useReopenPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (period: string) => (await api.post(`/periods/${period}/reopen`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['periods'] }),
+  });
+}
+
+export function useAssets() {
+  return useQuery({
+    queryKey: ['assets'],
+    queryFn: async () => (await api.get<{ rows: FixedAssetRow[]; totals: { costCents: number; accumulatedCents: number; bookValueCents: number }; count: number }>('/assets')).data,
+  });
+}
+export function useSaveAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id?: string; name: string; category?: string; acquiredAt: string; costCents: number; salvageCents?: number; usefulLifeMonths?: number; notes?: string }) => {
+      const { id, ...body } = p;
+      return id ? (await api.patch(`/assets/${id}`, body)).data : (await api.post('/assets', body)).data;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['assets'] }); qc.invalidateQueries({ queryKey: ['position'] }); },
+  });
+}
+export function useDisposeAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/assets/${id}/dispose`)).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['assets'] }); qc.invalidateQueries({ queryKey: ['position'] }); },
+  });
+}
+
+export function useCreditNotes() {
+  return useQuery({ queryKey: ['credit-notes'], queryFn: async () => (await api.get<CreditNote[]>('/credit-notes')).data });
+}
+export function useCreateCreditNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { subscriberId: string; type: 'CREDIT' | 'REFUND'; amountCents: number; reason: string; method?: string }) =>
+      (await api.post('/credit-notes', p)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credit-notes'] });
+      qc.invalidateQueries({ queryKey: ['subscribers'] });
+      qc.invalidateQueries({ queryKey: ['position'] });
+    },
+  });
+}
+
+export function useBankAccounts() {
+  return useQuery({ queryKey: ['bank-accounts'], queryFn: async () => (await api.get<BankAccount[]>('/bank/accounts')).data });
+}
+export function useSaveBankAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id?: string; name: string; type?: string; active?: boolean }) => {
+      const { id, ...body } = p;
+      return id ? (await api.patch(`/bank/accounts/${id}`, body)).data : (await api.post('/bank/accounts', body)).data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bank-accounts'] }),
+  });
+}
+export function useUnreconciled(range: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ['unreconciled', range],
+    queryFn: async () => (await api.get<{ rows: UnreconciledPayment[]; totalCents: number; count: number }>('/bank/unreconciled', { params: range })).data,
+  });
+}
+export function useReconcile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { paymentIds: string[]; bankAccountId?: string }) => (await api.post<{ reconciled: number }>('/bank/reconcile', p)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['unreconciled'] }),
+  });
+}
+
+export function useCashflow(range: { from?: string; to?: string }) {
+  return useQuery({ queryKey: ['cashflow', range], queryFn: async () => (await api.get<Cashflow>('/reports/cashflow', { params: range })).data });
+}
+export function usePosition() {
+  return useQuery({ queryKey: ['position'], queryFn: async () => (await api.get<FinancialPosition>('/reports/position')).data });
+}
