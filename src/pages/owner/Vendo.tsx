@@ -77,12 +77,12 @@ export default function Vendo() {
                   <div className="min-w-0">
                     <p className="truncate font-600">
                       {r.vendoNumber && <span className="mr-1 text-signal-600">#{r.vendoNumber}</span>}
-                      {r.vendoName || r.fullName}
+                      {r.vendoName || r.partnerName}
                     </p>
                     <p className="truncate text-xs text-ink/50">
                       {[r.sitio, r.barangay, r.municipality].filter(Boolean).join(', ') || r.accountNo}
                     </p>
-                    <p className="truncate text-xs text-ink/40">Host: {r.fullName}{r.phone ? ` · ${r.phone}` : ''}</p>
+                    <p className="truncate text-xs text-ink/40">Host: {r.partnerName}{r.phone ? ` · ${r.phone}` : ''}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="font-600 text-good">{peso(r.profitCents)}</p>
