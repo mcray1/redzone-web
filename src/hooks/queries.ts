@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest, TenantSummary } from '../api/types';
+import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoSite, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest, TenantSummary } from '../api/types';
 
 export function useSubscribers(params: { q?: string; status?: string; type?: string; offlineHours?: number; take?: number; skip?: number }) {
   return useQuery({
@@ -1171,60 +1171,60 @@ export function useCalibrateCoin() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vendo-coins'] }),
   });
 }
-export function useVendoCollections(subscriberId: string | undefined, range?: { from?: string; to?: string }) {
+export function useVendoCollections(siteId: string | undefined, range?: { from?: string; to?: string }) {
   const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-collections', subscriberId, params],
-    enabled: !!subscriberId,
-    queryFn: async () => (await api.get<VendoCollection[]>(`/vendo/subscriber/${subscriberId}/collections`, { params })).data,
+    queryKey: ['vendo-collections', siteId, params],
+    enabled: !!siteId,
+    queryFn: async () => (await api.get<VendoCollection[]>(`/vendo/sites/${siteId}/collections`, { params })).data,
   });
 }
 export function useRecordCollection() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: {
-      subscriberId: string; date: string; deductionPct: number; note?: string;
+      siteId: string; date: string; deductionPct: number; note?: string;
       lines: Array<{ key: string; grams?: number; count?: number }>;
       direct?: Array<{ label: string; amountCents: number }>; // unweighed ₱10/₱20 totals
     }) => {
-      const { subscriberId, ...body } = p;
-      return (await api.post(`/vendo/subscriber/${subscriberId}/collections`, body)).data;
+      const { siteId, ...body } = p;
+      return (await api.post(`/vendo/sites/${siteId}/collections`, body)).data;
     },
     onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ['vendo-collections', v.subscriberId] });
-      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-collections', v.siteId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.siteId] });
       qc.invalidateQueries({ queryKey: ['vendo-report'] });
     },
   });
 }
-export function useVendoExpenses(subscriberId: string | undefined, range?: { from?: string; to?: string }) {
+export function useVendoExpenses(siteId: string | undefined, range?: { from?: string; to?: string }) {
   const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-expenses', subscriberId, params],
-    enabled: !!subscriberId,
-    queryFn: async () => (await api.get<VendoExpense[]>(`/vendo/subscriber/${subscriberId}/expenses`, { params })).data,
+    queryKey: ['vendo-expenses', siteId, params],
+    enabled: !!siteId,
+    queryFn: async () => (await api.get<VendoExpense[]>(`/vendo/sites/${siteId}/expenses`, { params })).data,
   });
 }
 export function useRecordVendoExpense() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { subscriberId: string; date: string; category: string; description: string; amountCents: number }) => {
-      const { subscriberId, ...body } = p;
-      return (await api.post(`/vendo/subscriber/${subscriberId}/expenses`, body)).data;
+    mutationFn: async (p: { siteId: string; date: string; category: string; description: string; amountCents: number }) => {
+      const { siteId, ...body } = p;
+      return (await api.post(`/vendo/sites/${siteId}/expenses`, body)).data;
     },
     onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ['vendo-expenses', v.subscriberId] });
-      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-expenses', v.siteId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.siteId] });
       qc.invalidateQueries({ queryKey: ['vendo-report'] });
     },
   });
 }
-export function useVendoSummary(subscriberId: string | undefined, range?: { from?: string; to?: string }) {
+export function useVendoSummary(siteId: string | undefined, range?: { from?: string; to?: string }) {
   const params = { from: range?.from || undefined, to: range?.to || undefined };
   return useQuery({
-    queryKey: ['vendo-summary', subscriberId, params],
-    enabled: !!subscriberId,
-    queryFn: async () => (await api.get<VendoSummary>(`/vendo/subscriber/${subscriberId}/summary`, { params })).data,
+    queryKey: ['vendo-summary', siteId, params],
+    enabled: !!siteId,
+    queryFn: async () => (await api.get<VendoSummary>(`/vendo/sites/${siteId}/summary`, { params })).data,
   });
 }
 export function useVendoReport(range?: { from?: string; to?: string }) {
@@ -1235,14 +1235,45 @@ export function useVendoReport(range?: { from?: string; to?: string }) {
   });
 }
 // ---- Vendo CRUD (sites, coin types, deletes) ------------------------------
+export function useVendoSites(all = false) {
+  return useQuery({
+    queryKey: ['vendo-sites', all],
+    queryFn: async () => (await api.get<VendoSite[]>('/vendo/sites', { params: all ? { all: '1' } : {} })).data,
+  });
+}
+export function useVendoSite(id: string | undefined) {
+  return useQuery({
+    queryKey: ['vendo-site', id],
+    enabled: !!id,
+    queryFn: async () => (await api.get<VendoSite>(`/vendo/sites/${id}`)).data,
+  });
+}
 export function useCreateVendoSite() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: {
       vendoName: string; vendoNumber?: string; ownerName?: string; phone?: string;
       municipality?: string; barangay?: string; sitio?: string; address?: string; notes?: string;
-    }) => (await api.post('/vendo/sites', p)).data,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendo-report'] }); qc.invalidateQueries({ queryKey: ['subscribers'] }); },
+    }) => (await api.post<VendoSite>('/vendo/sites', p)).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['vendo-report'] }); qc.invalidateQueries({ queryKey: ['vendo-sites'] }); },
+  });
+}
+export function useUpdateVendoSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      id: string; vendoName?: string; vendoNumber?: string; ownerName?: string; phone?: string;
+      municipality?: string; barangay?: string; sitio?: string; address?: string;
+      estimatedClients?: number; notes?: string; status?: 'ACTIVE' | 'ARCHIVED';
+    }) => {
+      const { id, ...body } = p;
+      return (await api.patch<VendoSite>(`/vendo/sites/${id}`, body)).data;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['vendo-site', v.id] });
+      qc.invalidateQueries({ queryKey: ['vendo-sites'] });
+      qc.invalidateQueries({ queryKey: ['vendo-report'] });
+    },
   });
 }
 export function useCreateCoinType() {
@@ -1274,11 +1305,11 @@ export function useDeleteCoinType() {
 export function useVoidVendoCollection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { id: string; subscriberId: string; reason: string }) =>
+    mutationFn: async (p: { id: string; siteId: string; reason: string }) =>
       (await api.post(`/vendo/collections/${p.id}/void`, { reason: p.reason })).data,
     onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ['vendo-collections', v.subscriberId] });
-      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-collections', v.siteId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.siteId] });
       qc.invalidateQueries({ queryKey: ['vendo-report'] });
     },
   });
@@ -1286,11 +1317,11 @@ export function useVoidVendoCollection() {
 export function useVoidVendoExpense() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { id: string; subscriberId: string; reason: string }) =>
+    mutationFn: async (p: { id: string; siteId: string; reason: string }) =>
       (await api.post(`/vendo/expenses/${p.id}/void`, { reason: p.reason })).data,
     onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ['vendo-expenses', v.subscriberId] });
-      qc.invalidateQueries({ queryKey: ['vendo-summary', v.subscriberId] });
+      qc.invalidateQueries({ queryKey: ['vendo-expenses', v.siteId] });
+      qc.invalidateQueries({ queryKey: ['vendo-summary', v.siteId] });
       qc.invalidateQueries({ queryKey: ['vendo-report'] });
     },
   });
@@ -1467,11 +1498,13 @@ export function useApproveRegistration() {
       loginEmail?: string; loginPassword?: string;
     }) => {
       const { id, ...body } = p;
-      return (await api.post(`/registrations/${id}/approve`, body)).data;
+      // PLAN approvals return subscriberId; VENDO approvals return vendoSiteId.
+      return (await api.post<{ accountNo: string; subscriberId?: string; vendoSiteId?: string }>(`/registrations/${id}/approve`, body)).data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['registrations'] });
       qc.invalidateQueries({ queryKey: ['subscribers'] });
+      qc.invalidateQueries({ queryKey: ['vendo-sites'] });
       qc.invalidateQueries({ queryKey: ['attention'] });
     },
   });

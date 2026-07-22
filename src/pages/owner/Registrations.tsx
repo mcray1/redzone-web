@@ -131,7 +131,9 @@ function ApproveModal({ reg, onClose }: { reg: Registration; onClose: () => void
         loginPassword: !reg.hasLogin && makeLogin ? loginPassword : undefined,
       });
       onClose();
-      if (res?.subscriberId) nav(`/owner/subscribers/${res.subscriberId}`);
+      // A vendo approval creates a VendoSite; a plan approval creates a subscriber.
+      if (res?.vendoSiteId) nav(`/owner/vendo/${res.vendoSiteId}`);
+      else if (res?.subscriberId) nav(`/owner/subscribers/${res.subscriberId}`);
     } catch (e) {
       setErr(apiError(e, 'Could not approve.'));
     }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useSubscribers, useCreateSubscriber, usePlans } from '../../hooks/queries';
+import { useSubscribers, useCreateSubscriber, usePlans, useVendoSites } from '../../hooks/queries';
 import { useAuth } from '../../context/AuthContext';
 import { peso } from '../../api/types';
 import { Spinner, StatusPill, EmptyState } from '../../components/ui';
@@ -40,22 +40,35 @@ export default function Subscribers() {
   const [showAdd, setShowAdd] = useState(false);
   const nav = useNavigate();
   const { hasPerm } = useAuth();
+  // Paying accounts come from /subscribers; vendo sites are their own table
+  // since the split and come from /vendo/sites.
+  const isVendoTab = type === 'VENDO';
   const { data, isLoading } = useSubscribers({
     q: q || undefined,
     status: status || undefined,
-    type,
+    type: 'PLAN',
     offlineHours: offlineHours ? Number(offlineHours) : undefined,
+  });
+  const { data: allSites, isLoading: sitesLoading } = useVendoSites(true);
+  const sites = (allSites ?? []).filter((s) => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return true;
+    return [s.vendoName, s.partnerName, s.accountNo, s.vendoNumber, s.phone]
+      .some((v) => v && v.toLowerCase().includes(needle));
   });
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-700">{type === 'VENDO' ? 'Vendo sites' : 'Subscribers'}</h1>
-          <p className="text-sm text-ink/50">{data?.total ?? 0} {type === 'VENDO' ? 'vendo' : 'paying'}</p>
+          <h1 className="font-display text-2xl font-700">{isVendoTab ? 'Vendo sites' : 'Subscribers'}</h1>
+          <p className="text-sm text-ink/50">{isVendoTab ? `${sites.length} vendo` : `${data?.total ?? 0} paying`}</p>
         </div>
-        {hasPerm('subscribers.add') && (
+        {!isVendoTab && hasPerm('subscribers.add') && (
           <button className="btn-primary" onClick={() => setShowAdd(true)}>Add subscriber</button>
+        )}
+        {isVendoTab && (
+          <button className="btn-primary" onClick={() => nav('/owner/vendo')}>Vendo page</button>
         )}
       </div>
 
@@ -71,6 +84,7 @@ export default function Subscribers() {
       <div className="space-y-3">
         <input className="input" placeholder="Search name, account no., PPPoE, phone…"
           value={q} onChange={(e) => setQ(e.target.value)} />
+        {!isVendoTab && (
         <div className="flex gap-2 overflow-x-auto">
           {FILTERS.map((f) => (
             <button key={f.key} onClick={() => setStatus(f.key)}
@@ -79,7 +93,8 @@ export default function Subscribers() {
               }`}>{f.label}</button>
           ))}
         </div>
-        {type !== 'VENDO' && (
+        )}
+        {!isVendoTab && (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <label className="text-xs font-600 uppercase tracking-wide text-ink/40">Connection</label>
@@ -99,7 +114,29 @@ export default function Subscribers() {
         )}
       </div>
 
-      {isLoading ? <Spinner /> : !data?.items.length ? (
+      {isVendoTab ? (
+        sitesLoading ? <Spinner /> : !sites.length ? (
+          <EmptyState title="No vendo sites found" hint="Add machines from the Vendo page, or approve a WiFi Vendo registration." />
+        ) : (
+          <div className="card divide-y divide-line overflow-hidden">
+            {sites.map((s) => (
+              <button key={s.id} onClick={() => nav(`/owner/vendo/${s.id}`)}
+                className="flex w-full items-center justify-between px-4 py-3.5 text-left hover:bg-paper">
+                <div className="min-w-0">
+                  <p className="truncate font-600">
+                    {s.vendoNumber && <span className="mr-1 text-signal-600">#{s.vendoNumber}</span>}
+                    {s.vendoName}
+                  </p>
+                  <p className="text-xs text-ink/50">{s.accountNo} · {s.partnerName}</p>
+                </div>
+                <span className={`pill shrink-0 ${s.status === 'ACTIVE' ? 'bg-good/10 text-good' : 'bg-ink/10 text-ink/50'}`}>
+                  {s.status === 'ACTIVE' ? 'Active' : 'Archived'}
+                </span>
+              </button>
+            ))}
+          </div>
+        )
+      ) : isLoading ? <Spinner /> : !data?.items.length ? (
         <EmptyState title="No subscribers found" hint="Try a different search, or add your first subscriber." />
       ) : (
         <div className="card divide-y divide-line overflow-hidden">
@@ -110,13 +147,11 @@ export default function Subscribers() {
                 <p className="truncate font-600">{s.fullName}</p>
                 <p className="text-xs text-ink/50">
                   {s.accountNo}
-                  {type === 'VENDO'
-                    ? (s.estimatedClients != null ? ` · est. ${s.estimatedClients} clients` : '')
-                    : (s.servicePlan ? ` · ${s.servicePlan.name}` : '')}
+                  {s.servicePlan ? ` · ${s.servicePlan.name}` : ''}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                {type !== 'VENDO' && (() => {
+                {(() => {
                   const o = lastOnlineLabel(s.lastOnlineAt);
                   return <span className={`hidden text-xs sm:inline ${o.tone}`}>{o.text}</span>;
                 })()}

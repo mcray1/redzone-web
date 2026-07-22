@@ -129,7 +129,8 @@ export default function SubscriberDetail() {
       )}
 
       {/* Vendo income & expenses — only for vendo sites */}
-      {isVendo && <VendoPanel subscriberId={s.id} />}
+      {/* Legacy pre-split vendo rows only: the migrated VendoSite kept this id. */}
+      {isVendo && <VendoPanel siteId={s.id} />}
 
       {/* Customer equipment (GenieACS) — renders only when the integration is on */}
       {!isVendo && <CpePanel subscriberId={s.id} />}

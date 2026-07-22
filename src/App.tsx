@@ -22,6 +22,7 @@ import Inventory from './pages/owner/Inventory';
 import Network from './pages/owner/Network';
 import Devices from './pages/owner/Devices';
 import Vendo from './pages/owner/Vendo';
+import VendoSiteDetail from './pages/owner/VendoSiteDetail';
 import Disconnections from './pages/owner/Disconnections';
 import Settings from './pages/owner/Settings';
 import Portal from './pages/portal/Portal';
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="network" element={<Network />} />
           <Route path="devices" element={<Devices />} />
           <Route path="vendo" element={<Vendo />} />
+          <Route path="vendo/:id" element={<VendoSiteDetail />} />
           <Route path="tenants" element={<Tenants />} />
         </Route>
 
