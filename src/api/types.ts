@@ -439,6 +439,25 @@ export interface VendoCoinType {
   gramsPerCoin: number;
   sortOrder: number;
 }
+// A piso-WiFi machine/site — its own record since the vendo/subscriber split.
+export interface VendoSite {
+  id: string;
+  accountNo: string;
+  partnerName: string;
+  /** Alias of partnerName kept by the API for pre-split bundles. */
+  fullName?: string;
+  vendoName: string;
+  vendoNumber?: string | null;
+  phone?: string | null;
+  municipality?: string | null;
+  barangay?: string | null;
+  sitio?: string | null;
+  address?: string | null;
+  estimatedClients?: number | null;
+  notes?: string | null;
+  status: 'ACTIVE' | 'ARCHIVED';
+  createdAt?: string;
+}
 export interface VendoCollectionLine {
   key: string; label: string; faceCents: number; gramsPerCoin: number;
   grams: number | null; count: number; valueCents: number;
@@ -477,7 +496,7 @@ export interface VendoSummary {
   grossCents: number; netCents: number; expenseCents: number; profitCents: number; collections: number;
 }
 export interface VendoReportRow {
-  id: string; fullName: string; phone?: string | null; accountNo: string;
+  id: string; partnerName: string; fullName: string; phone?: string | null; accountNo: string;
   vendoName?: string | null; vendoNumber?: string | null;
   municipality?: string | null; barangay?: string | null; sitio?: string | null;
   grossCents: number; netCents: number; expenseCents: number; profitCents: number;

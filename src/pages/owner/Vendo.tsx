@@ -72,7 +72,7 @@ export default function Vendo() {
           ) : (
             <div className="card divide-y divide-line overflow-hidden">
               {data.rows.map((r) => (
-                <button key={r.id} onClick={() => nav(`/owner/subscribers/${r.id}`)}
+                <button key={r.id} onClick={() => nav(`/owner/vendo/${r.id}`)}
                   className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-paper">
                   <div className="min-w-0">
                     <p className="truncate font-600">
@@ -96,7 +96,7 @@ export default function Vendo() {
       )}
 
       {coinsOpen && <CoinWeightsModal onClose={() => setCoinsOpen(false)} />}
-      {addOpen && <AddSiteModal onClose={() => setAddOpen(false)} onCreated={(id) => { setAddOpen(false); nav(`/owner/subscribers/${id}`); }} />}
+      {addOpen && <AddSiteModal onClose={() => setAddOpen(false)} onCreated={(id) => { setAddOpen(false); nav(`/owner/vendo/${id}`); }} />}
     </div>
   );
 }

@@ -16,7 +16,7 @@ function apiError(err: unknown, fallback: string) {
 function today() { return new Date().toISOString().slice(0, 10); }
 function monthStart() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); }
 
-export function VendoPanel({ subscriberId }: { subscriberId: string }) {
+export function VendoPanel({ siteId }: { siteId: string }) {
   const { user, hasPerm } = useAuth();
   const canView = hasPerm('vendo.view') || hasPerm('vendo.manage');
   const canManage = hasPerm('vendo.manage');
@@ -25,9 +25,9 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const range = { from, to };
-  const { data: summary } = useVendoSummary(canView ? subscriberId : undefined, range);
-  const { data: collections } = useVendoCollections(canView ? subscriberId : undefined, range);
-  const { data: expenses } = useVendoExpenses(canView ? subscriberId : undefined, range);
+  const { data: summary } = useVendoSummary(canView ? siteId : undefined, range);
+  const { data: collections } = useVendoCollections(canView ? siteId : undefined, range);
+  const { data: expenses } = useVendoExpenses(canView ? siteId : undefined, range);
   const [collectOpen, setCollectOpen] = useState(false);
   const voidCollection = useVoidVendoCollection();
   const voidExpense = useVoidVendoExpense();
@@ -78,7 +78,7 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
                   ) : c.remittanceId ? (
                     <span className="text-[10px] text-ink/30" title="Covered by a remittance — immutable">remitted</span>
                   ) : canVoid ? (
-                    <VoidTap onVoid={(reason) => voidCollection.mutateAsync({ id: c.id, subscriberId, reason })} />
+                    <VoidTap onVoid={(reason) => voidCollection.mutateAsync({ id: c.id, siteId, reason })} />
                   ) : null}
                 </span>
               </li>
@@ -101,7 +101,7 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
                   {e.voided ? (
                     <span className="text-[10px] text-bad/70">voided</span>
                   ) : canVoid ? (
-                    <VoidTap onVoid={(reason) => voidExpense.mutateAsync({ id: e.id, subscriberId, reason })} />
+                    <VoidTap onVoid={(reason) => voidExpense.mutateAsync({ id: e.id, siteId, reason })} />
                   ) : null}
                 </span>
               </li>
@@ -110,8 +110,8 @@ export function VendoPanel({ subscriberId }: { subscriberId: string }) {
         </div>
       )}
 
-      {collectOpen && <CollectModal subscriberId={subscriberId} onClose={() => setCollectOpen(false)} />}
-      {expenseOpen && <ExpenseModal subscriberId={subscriberId} onClose={() => setExpenseOpen(false)} />}
+      {collectOpen && <CollectModal siteId={siteId} onClose={() => setCollectOpen(false)} />}
+      {expenseOpen && <ExpenseModal siteId={siteId} onClose={() => setExpenseOpen(false)} />}
     </div>
   );
 }
@@ -158,7 +158,7 @@ function Mini({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
-function CollectModal({ subscriberId, onClose }: { subscriberId: string; onClose: () => void }) {
+function CollectModal({ siteId, onClose }: { siteId: string; onClose: () => void }) {
   const { data: coins } = useVendoCoinTypes();
   const record = useRecordCollection();
   const [date, setDate] = useState(today());
@@ -196,7 +196,7 @@ function CollectModal({ subscriberId, onClose }: { subscriberId: string; onClose
     ].filter((d) => d.amountCents > 0);
     if (!lines.length && !direct.length) { setErr('Enter a coin-pile weight or a ₱10/₱20 total.'); return; }
     try {
-      await record.mutateAsync({ subscriberId, date, deductionPct: Number(pct) || 0, note: note || undefined, lines, direct });
+      await record.mutateAsync({ siteId, date, deductionPct: Number(pct) || 0, note: note || undefined, lines, direct });
       onClose();
     } catch (e) { setErr(apiError(e, 'Could not save the collection.')); }
   }
@@ -270,7 +270,7 @@ function CollectModal({ subscriberId, onClose }: { subscriberId: string; onClose
   );
 }
 
-function ExpenseModal({ subscriberId, onClose }: { subscriberId: string; onClose: () => void }) {
+function ExpenseModal({ siteId, onClose }: { siteId: string; onClose: () => void }) {
   const record = useRecordVendoExpense();
   const [date, setDate] = useState(today());
   const [category, setCategory] = useState('Electricity');
@@ -283,7 +283,7 @@ function ExpenseModal({ subscriberId, onClose }: { subscriberId: string; onClose
     const amountCents = Math.round(Number(amount) * 100);
     if (!description.trim() || !amountCents) { setErr('Enter a description and amount.'); return; }
     try {
-      await record.mutateAsync({ subscriberId, date, category, description: description.trim(), amountCents });
+      await record.mutateAsync({ siteId, date, category, description: description.trim(), amountCents });
       onClose();
     } catch (e) { setErr(apiError(e, 'Could not save the expense.')); }
   }
