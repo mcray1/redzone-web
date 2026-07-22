@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { Subscriber, Invoice, Payment, ServicePlan, StaffUser, Ticket, CollectorToday, Job, StaffSalary, SalaryAdvance, StaffSalaryRow, Remittance, PayrollRun, PayrollRunDetail, Expense, AuditEntry, PaymentExtension, InventoryItem, InventoryMovement, NetworkNode, CustomRole, PermissionCatalogItem, CpeDevice, PublicPlan, Registration, VendoSite, VendoCoinType, VendoCollection, VendoExpense, VendoSummary, VendoReportRow, DiscountRequest, TenantSummary } from '../api/types';
 
-export function useSubscribers(params: { q?: string; status?: string; type?: string; offlineHours?: number; take?: number; skip?: number }) {
+export function useSubscribers(params: { q?: string; status?: string; offlineHours?: number; take?: number; skip?: number }) {
   return useQuery({
     queryKey: ['subscribers', params],
     queryFn: async () => {

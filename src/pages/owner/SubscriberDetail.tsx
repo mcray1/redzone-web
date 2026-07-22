@@ -10,7 +10,6 @@ import { FileUpload } from '../../components/FileUpload';
 import { ProofLink } from '../../components/ProofLink';
 import { CpePanel } from '../../components/CpePanel';
 import { MapThumbnail } from '../../components/MapThumbnail';
-import { VendoPanel } from '../../components/VendoPanel';
 
 export default function SubscriberDetail() {
   const { id } = useParams();
@@ -24,9 +23,6 @@ export default function SubscriberDetail() {
   const [discountOpen, setDiscountOpen] = useState(false);
 
   if (isLoading || !s) return <Spinner />;
-  // Vendo sites are cash businesses: no plan, no invoices/payments, no CPE.
-  // Their money lives in the Vendo income panel below.
-  const isVendo = s.accountType === 'VENDO';
 
   return (
     <div className="space-y-5">
@@ -42,32 +38,22 @@ export default function SubscriberDetail() {
             {hasPerm('subscribers.edit') && (
               <button className="text-sm font-600 text-signal-600" onClick={() => setEditOpen(true)}>Edit</button>
             )}
-            {isVendo && <span className="pill bg-signal/15 text-signal-600">Vendo</span>}
-            {!isVendo && s.billingExempt && <span className="pill bg-ink/10 text-ink/60">Free</span>}
+            {s.billingExempt && <span className="pill bg-ink/10 text-ink/60">Free</span>}
             <StatusPill status={s.status} />
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 text-sm">
-          {!isVendo && (
-            <>
-              <Field label="Plan" value={s.servicePlan?.name ?? '—'} />
-              <Field label="Monthly" value={s.servicePlan ? peso(s.servicePlan.priceCents) : '—'} />
-              <Field label="Balance" value={peso(s.balanceCents)} danger={s.balanceCents > 0} />
-              <Field label="Due day" value={`Day ${s.dueDay}`} />
-            </>
-          )}
+          <Field label="Plan" value={s.servicePlan?.name ?? '—'} />
+          <Field label="Monthly" value={s.servicePlan ? peso(s.servicePlan.priceCents) : '—'} />
+          <Field label="Balance" value={peso(s.balanceCents)} danger={s.balanceCents > 0} />
+          <Field label="Due day" value={`Day ${s.dueDay}`} />
           <Field label="Phone" value={s.phone ?? '—'} />
           <Field label="Email" value={s.email ?? '—'} />
           <Field label="Sitio / Purok" value={s.sitio ?? '—'} />
           <Field label="Barangay" value={s.barangay ?? '—'} />
           <Field label="Municipality" value={s.municipality ?? '—'} />
-          {!isVendo && <Field label="PPPoE username" value={s.pppoeUsername ?? '—'} />}
-          {isVendo && <Field label="Vendo no." value={s.vendoNumber ?? '—'} />}
-          {isVendo && <Field label="Vendo name" value={s.vendoName ?? '—'} />}
-          {isVendo && (
-            <Field label="Est. clients" value={s.estimatedClients != null ? String(s.estimatedClients) : '—'} />
-          )}
+          <Field label="PPPoE username" value={s.pppoeUsername ?? '—'} />
         </div>
 
         {s.gpsLat != null && s.gpsLng != null && (
@@ -76,7 +62,7 @@ export default function SubscriberDetail() {
           </div>
         )}
 
-        {!isVendo && (() => {
+        {(() => {
           const ext = s.extensions?.find((e) => e.status === 'APPROVED');
           return ext ? (
             <p className="mt-4 rounded-lg bg-good/10 px-3 py-2 text-sm text-good">
@@ -91,16 +77,13 @@ export default function SubscriberDetail() {
           </div>
         )}
 
-        {!isVendo && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={() => setPayOpen(true)}>Record payment</button>
-            {hasPerm('billing.prorate') && <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />}
-            {settings?.discountByCollector && <button className="btn-ghost" onClick={() => setDiscountOpen(true)}>Request discount</button>}
-          </div>
-        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button className="btn-primary" onClick={() => setPayOpen(true)}>Record payment</button>
+          {hasPerm('billing.prorate') && <ProrateButton subscriberId={s.id} hasPlan={!!s.servicePlan} />}
+          {settings?.discountByCollector && <button className="btn-ghost" onClick={() => setDiscountOpen(true)}>Request discount</button>}
+        </div>
       </div>
 
-      {!isVendo && (
       <div className="card p-5">
         <h2 className="font-display font-600">Payment history</h2>
         {s.payments?.length ? (
@@ -126,14 +109,9 @@ export default function SubscriberDetail() {
           <p className="mt-3 text-sm text-ink/40">No payments recorded yet.</p>
         )}
       </div>
-      )}
-
-      {/* Vendo income & expenses — only for vendo sites */}
-      {/* Legacy pre-split vendo rows only: the migrated VendoSite kept this id. */}
-      {isVendo && <VendoPanel siteId={s.id} />}
 
       {/* Customer equipment (GenieACS) — renders only when the integration is on */}
-      {!isVendo && <CpePanel subscriberId={s.id} />}
+      <CpePanel subscriberId={s.id} />
 
       {/* Customer portal login */}
       <div className="card p-5">
@@ -291,7 +269,7 @@ function CustomerLoginModal({ subscriberId, existingEmail, suggestedEmail, onClo
 interface EditVals {
   fullName: string; phone?: string; email?: string; address?: string; sitio?: string;
   municipality?: string; barangay?: string; servicePlanId?: string; dueDay?: number; lateFeeEnabled?: boolean;
-  billingExempt?: boolean; pppoeUsername?: string; wifiSsid?: string; wifiPassword?: string; vendoName?: string; vendoNumber?: string; estimatedClients?: number;
+  billingExempt?: boolean; pppoeUsername?: string; wifiSsid?: string; wifiPassword?: string;
 }
 
 function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () => void }) {
@@ -314,12 +292,8 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
       pppoeUsername: sub.pppoeUsername ?? '',
       wifiSsid: sub.wifiSsid ?? '',
       wifiPassword: '',
-      vendoName: sub.vendoName ?? '',
-      vendoNumber: sub.vendoNumber ?? '',
-      estimatedClients: sub.estimatedClients ?? undefined,
     },
   });
-  const isVendo = sub.accountType === 'VENDO';
   const municipality = watch('municipality') || '';
   const barangay = watch('barangay') || '';
 
@@ -336,16 +310,13 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
           sitio: v.sitio,
           municipality: v.municipality,
           barangay: v.barangay,
-          servicePlanId: isVendo ? undefined : v.servicePlanId,
-          dueDay: !isVendo && v.dueDay ? Number(v.dueDay) : undefined,
-          lateFeeEnabled: isVendo ? undefined : !!v.lateFeeEnabled,
-          billingExempt: isVendo ? undefined : !!v.billingExempt,
-          pppoeUsername: isVendo ? undefined : v.pppoeUsername,
-          wifiSsid: isVendo ? undefined : v.wifiSsid,
-          ...(!isVendo && v.wifiPassword ? { wifiPassword: v.wifiPassword } : {}),
-          vendoName: isVendo ? v.vendoName : undefined,
-          vendoNumber: isVendo ? v.vendoNumber : undefined,
-          estimatedClients: isVendo && v.estimatedClients !== undefined && `${v.estimatedClients}` !== '' ? Number(v.estimatedClients) : undefined,
+          servicePlanId: v.servicePlanId,
+          dueDay: v.dueDay ? Number(v.dueDay) : undefined,
+          lateFeeEnabled: !!v.lateFeeEnabled,
+          billingExempt: !!v.billingExempt,
+          pppoeUsername: v.pppoeUsername,
+          wifiSsid: v.wifiSsid,
+          ...(v.wifiPassword ? { wifiPassword: v.wifiPassword } : {}),
         },
       });
       onClose();
@@ -391,70 +362,39 @@ function EditSubscriberModal({ sub, onClose }: { sub: Subscriber; onClose: () =>
               onBarangay={(v) => setValue('barangay', v)}
             />
           </div>
-          {/* Vendo sites have no service plan and no monthly billing cycle. */}
-          {!isVendo && (
-            <>
-              <div className="col-span-1">
-                <label className="label">Due day</label>
-                <input className="input" type="number" min={1} max={28} {...register('dueDay')} />
-              </div>
-              <div className="col-span-1">
-                <label className="label">Service plan</label>
-                <select className="input" {...register('servicePlanId')}>
-                  <option value="">— No plan —</option>
-                  {plans?.filter((p) => p.active).map((p) => (
-                    <option key={p.id} value={p.id}>{p.name} ({peso(p.priceCents)}/mo)</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
-          {!isVendo && (
-            <>
-              <div className="col-span-2">
-                <label className="label">PPPoE username (links to the router account)</label>
-                <input className="input" {...register('pppoeUsername')} placeholder="e.g. juan_delacruz" />
-              </div>
-              <div>
-                <label className="label">WiFi name</label>
-                <input className="input" {...register('wifiSsid')} placeholder="e.g. RedZone_Juan" />
-              </div>
-              <div>
-                <label className="label">WiFi password</label>
-                <input className="input" {...register('wifiPassword')} placeholder="leave blank to keep" />
-              </div>
-            </>
-          )}
-
-          {isVendo && (
-            <>
-              <div>
-                <label className="label">Vendo number</label>
-                <input className="input" {...register('vendoNumber')} placeholder="e.g. V-012" />
-              </div>
-              <div>
-                <label className="label">Vendo name</label>
-                <input className="input" {...register('vendoName')} placeholder="e.g. Sari-sari corner" />
-              </div>
-              <div className="col-span-2">
-                <label className="label">Estimated clients</label>
-                <input className="input" type="number" min={0} {...register('estimatedClients')} />
-              </div>
-            </>
-          )}
-
-          {!isVendo && (
-            <>
-              <label className="col-span-2 flex items-center gap-2 text-sm">
-                <input type="checkbox" className="h-4 w-4" {...register('lateFeeEnabled')} />
-                Charge late fees on this account
-              </label>
-              <label className="col-span-2 flex items-center gap-2 text-sm">
-                <input type="checkbox" className="h-4 w-4" {...register('billingExempt')} />
-                Free account — never bill this subscriber
-              </label>
-            </>
-          )}
+          <div className="col-span-1">
+            <label className="label">Due day</label>
+            <input className="input" type="number" min={1} max={28} {...register('dueDay')} />
+          </div>
+          <div className="col-span-1">
+            <label className="label">Service plan</label>
+            <select className="input" {...register('servicePlanId')}>
+              <option value="">— No plan —</option>
+              {plans?.filter((p) => p.active).map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({peso(p.priceCents)}/mo)</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="label">PPPoE username (links to the router account)</label>
+            <input className="input" {...register('pppoeUsername')} placeholder="e.g. juan_delacruz" />
+          </div>
+          <div>
+            <label className="label">WiFi name</label>
+            <input className="input" {...register('wifiSsid')} placeholder="e.g. RedZone_Juan" />
+          </div>
+          <div>
+            <label className="label">WiFi password</label>
+            <input className="input" {...register('wifiPassword')} placeholder="leave blank to keep" />
+          </div>
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" {...register('lateFeeEnabled')} />
+            Charge late fees on this account
+          </label>
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" {...register('billingExempt')} />
+            Free account — never bill this subscriber
+          </label>
           {error && <p className="col-span-2 text-sm text-bad">{error}</p>}
           <div className="col-span-2 mt-2 flex gap-2">
             <button type="button" className="btn-ghost flex-1" onClick={onClose}>Cancel</button>

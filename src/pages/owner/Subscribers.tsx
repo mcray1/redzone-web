@@ -46,7 +46,6 @@ export default function Subscribers() {
   const { data, isLoading } = useSubscribers({
     q: q || undefined,
     status: status || undefined,
-    type: 'PLAN',
     offlineHours: offlineHours ? Number(offlineHours) : undefined,
   });
   const { data: allSites, isLoading: sitesLoading } = useVendoSites(true);
