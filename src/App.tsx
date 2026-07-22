@@ -17,6 +17,7 @@ import Installations from './pages/owner/Installations';
 import Payroll from './pages/owner/Payroll';
 import Reports from './pages/owner/Reports';
 import Expenses from './pages/owner/Expenses';
+import Accounting from './pages/owner/Accounting';
 import Audit from './pages/owner/Audit';
 import Inventory from './pages/owner/Inventory';
 import Network from './pages/owner/Network';
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="disconnections" element={<Disconnections />} />
           <Route path="expenses" element={<Expenses />} />
+          <Route path="accounting" element={<Accounting />} />
           <Route path="audit" element={<Audit />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="network" element={<Network />} />

@@ -36,6 +36,7 @@ const SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { to: '/owner/disconnections', label: 'For disconnection', icon: 'M18.36 6.64A9 9 0 1 1 5.64 6.64M12 2v10', perm: ['reports.view'] },
       { to: '/owner/expenses', label: 'Expenses', icon: 'M3 10h18M7 15h4M3 6h18v12H3zM3 6l0 4', perm: ['reports.view', 'expenses.approve'] },
       { to: '/owner/payroll', label: 'Payroll', icon: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6', perm: ['payroll.view'] },
+      { to: '/owner/accounting', label: 'Accounting', icon: 'M4 4h16v16H4zM4 9h16M9 4v16M14 13h3M14 17h3', adminOnly: true },
       { to: '/owner/reports', label: 'Reports', icon: 'M9 17V9M15 17v-4M4 4h16v16H4zM4 8h16', perm: ['reports.view'] },
       { to: '/owner/vendo', label: 'Vendo', icon: 'M12 2a4 4 0 014 4v1h1a2 2 0 012 2v11a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2h1V6a4 4 0 014-4zM9 12h6', perm: ['vendo.view', 'vendo.manage'] },
     ],
